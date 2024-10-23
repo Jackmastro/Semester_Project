@@ -1,0 +1,14 @@
+import numpy as np
+
+class LED:
+    """
+    """
+    def __init__(self, M:np.array) -> None:
+        """
+        """
+
+        self._initialization(M)
+
+    def _initialization(self, M:np.array) -> None:
+        """
+        """
