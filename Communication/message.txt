@@ -1,0 +1,14 @@
+Sent control input: S+080000
+Message received: State:	1 on topic diya06/rx/
+Message received: rxBuffer:	S+080000 on topic diya06/rx/
+Message received: Setting thermal actuators on topic diya06/rx/
+Message received: Read 80	0 on topic diya06/rx/
+Message received: Set	Peltier=80	Fan=0 on topic diya06/rx/
+Message received: State:	-1 on topic diya06/rx/
+Message received: rxBuffer:	S+080000 on topic diya06/rx/
+Message received: 20000101T193035	TMP&U	 25.44	 27.35	 32.62	Peltier: 80	Fan: 0	 on topic diya06/rx/
+Message received: 20000101T193036	TMP&U	 25.40	 27.32	 32.81	Peltier: 80	Fan: 0	 on topic diya06/rx/
+Message received: 20000101T193037	TMP&U	 25.39	 27.30	 33.00	Peltier: 80	Fan: 0	 on topic diya06/rx/
+Message received: 20000101T193038	TMP&U	 25.42	 27.25	 33.19	Peltier: 80	Fan: 0	 on topic diya06/rx/
+Message received: 20000101T193039	TMP&U	 25.43	 27.24	 33.39	Peltier: 80	Fan: 0	 on topic diya06/rx/
+Message received: 20000101T193040	TMP&U	 25.44	 27.21	 33.60	Peltier: 80	Fan: 0	 on topic diya06/rx/
