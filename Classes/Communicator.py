@@ -27,7 +27,7 @@ class Communicator:
         self.measurements:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
         
         # Variables for saving data at intervals
-        self._last_append_time = datetime.now()
+        self._last_append_time = datetime.datetime.now()
         self._stop_event = threading.Event()
         self.append_thread = threading.Thread(target=self._append_to_history_at_intervals)
 
@@ -40,7 +40,7 @@ class Communicator:
             
             self.save_directory = filedialog.askdirectory(title='Select a Folder to Save the Measurements')
             root.destroy()
-            
+
         else:
             self.save_directory = 'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Measurements'
 
@@ -77,7 +77,7 @@ class Communicator:
         last_message = message.payload.decode()
     
         # Check if the message matches the expected format
-        if "Peltier:" in last_message and "Fan:" in last_message:
+        if "TMP&U" not in last_message or "Peltier:" not in last_message or "Fan:" not in last_message:
             # This is a full measurement message
             self._on_message_parser(last_message)
         else:
