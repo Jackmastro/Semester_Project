@@ -17,9 +17,9 @@ class Communicator:
         self.TOPIC = "diya" + diya_name
         self.READ_TOPIC = self.TOPIC + "/rx/"
         self.TRANSMIT_TOPIC = self.TOPIC + "/tx/"
-        self.KEEP_ALIVE = 60
+        self.KEEP_ALIVE = 10
 
-        self.MEASUREMENT_NAME = ["T_1", "T_2", "T_3", "x_HP", "x_FAN"]
+        self.MEASUREMENT_NAME = ["T1_C", "T2_C", "T3_C", "x_HP", "x_FAN", "U_HP_V", "I_HP_mA"]
         self.last_measurement:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
 
         self.SAVE_DATA:bool = save_data
@@ -63,25 +63,31 @@ class Communicator:
                 print("Connection failed")
 
     def _on_message_parser(self, message) -> None:
-        """ Example message:
-        message = 20000101T193040 TMP&U 25.44 27.21 33.60 Peltier: 80 Fan: 0"""
+        """ message structure: TAS timestamp T_1 T_2 T_3 x_HP x_FAN U_HP I_HP"""
+
         parts = message.split()
 
+        if parts == [] or "TAS" not in parts[0] or len(parts) != 9:
+            print("Received non-standard message")
+            return
+        
         index = index = datetime.datetime.now()
-        values = [float(parts[2]), float(parts[3]), float(parts[4]), int(parts[6]), int(parts[8])]
+        values = [float(parts[2]), # T_1
+                  float(parts[3]), # T_2
+                  float(parts[4]), # T_3
+                  int(parts[5]),   # x_HP
+                  int(parts[6]),   # x_FAN
+                  float(parts[7]), # U_HP
+                  float(parts[8])] # I_HP
+        
         self.last_measurement = pd.DataFrame([values], columns=self.MEASUREMENT_NAME, index=[index])
 
         print(self.last_measurement)
 
     def on_message(self, client, userdata, message) -> None:
         last_message = message.payload.decode()
-    
-        # Check if the message matches the expected format
-        if "TMP&U" not in last_message or "Peltier:" not in last_message or "Fan:" not in last_message:
-            print("Received non-standard message:", last_message)
-        else:
-            # This is a full measurement message
-            self._on_message_parser(last_message)
+
+        self._on_message_parser(last_message)
 
     def _append_to_history_at_intervals(self) -> None:
         while not self._stop_event.is_set():
@@ -155,7 +161,7 @@ class Communicator:
 if __name__ == '__main__':
     diya_name = "06"
     comm = Communicator(diya_name, save_data=True, save_frequency=2, choose_specific_directory=False, verbose=True)
-    
+
     x_HP = 0
     x_FAN = 0
 
