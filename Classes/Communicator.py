@@ -4,10 +4,13 @@ import datetime
 import pandas as pd
 from IPython.display import display
 import threading
+import tkinter as tk
+from tkinter import filedialog
+import os
 
 
 class Communicator:
-    def __init__(self, diya_name:str, save_data:bool=False, save_frequency:int=60, verbose:bool=False) -> None:
+    def __init__(self, diya_name:str, save_data:bool=False, save_frequency:int=60, choose_specific_directory:bool=False, verbose:bool=False) -> None:
         # Define the MQTT broker details
         self.BROKER = "mqtt.119.ovh"
         self.PORT = 1883
@@ -20,13 +23,26 @@ class Communicator:
         self.last_measurement:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
 
         self.SAVE_DATA:bool = save_data
-        self.SAVE_FREQUENCY:int = save_frequency
-        self.historical_data:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
+        self.SAVE_FREQUENCY:int = save_frequency # in seconds
+        self.measurements:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
         
         # Variables for saving data at intervals
         self._last_append_time = datetime.now()
         self._stop_event = threading.Event()
         self.append_thread = threading.Thread(target=self._append_to_history_at_intervals)
+
+        # Set the save directory
+        if choose_specific_directory:
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            root.lift()  # Bring the window to the front
+            root.attributes('-topmost', True)  # Keep the window on top of all others
+            
+            self.save_directory = filedialog.askdirectory(title='Select a Folder to Save the Measurements')
+            root.destroy()
+            
+        else:
+            self.save_directory = 'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Measurements'
 
         self.verbose:bool = verbose
 
@@ -51,7 +67,7 @@ class Communicator:
         message = 20000101T193040 TMP&U 25.44 27.21 33.60 Peltier: 80 Fan: 0"""
         parts = message.split()
 
-        index = time.now()
+        index = index = datetime.datetime.now()
         values = [float(parts[2]), float(parts[3]), float(parts[4]), int(parts[6]), int(parts[8])]
         self.last_measurement = pd.DataFrame([values], columns=self.MEASUREMENT_NAME, index=[index])
 
@@ -65,13 +81,12 @@ class Communicator:
             # This is a full measurement message
             self._on_message_parser(last_message)
         else:
-            # Handle other types of messages
             print("Received non-standard message:", last_message)
 
     def _append_to_history_at_intervals(self) -> None:
         while not self._stop_event.is_set():
             if (datetime.now() - self._last_append_time).seconds >= self.SAVE_FREQUENCY:
-                self.historical_data = pd.concat([self.historical_data, self.last_measurement])
+                self.measurements = pd.concat([self.measurements, self.last_measurement])
                 self._last_append_time = datetime.now()
                 if self.verbose:
                     print("Data saved to history")
@@ -94,6 +109,19 @@ class Communicator:
         self.client.publish(self.TRANSMIT_TOPIC, message_str)
         print(f"Message sent: x_HP = {x_HP}, x_FAN = {x_FAN}")
 
+    def save_measurements(self) -> None:
+        if self.save_directory:
+            # File name as current date and diya name
+            current_time = time.strftime('%Y%m%d_%H%M%S')
+            file_name = f"{current_time}_{self.TOPIC}.csv"
+            file_path = os.path.join(self.save_directory, file_name)
+
+            self.measurements.to_csv(file_path, index=True)
+
+            print(f"Data saved to {file_path}.")
+        else:
+            print("No directory chosen. Data not saved.")
+
     def start(self) -> None:
         self.client.loop_start()
 
@@ -107,6 +135,7 @@ class Communicator:
         if self.SAVE_DATA:
             self._stop_event.set()
             self.append_thread.join()
+            self.save_measurements()
 
         self.client.loop_stop()
         self.client.disconnect()
