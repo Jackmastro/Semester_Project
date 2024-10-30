@@ -7,7 +7,7 @@ Q_LED = 7.7/1000 * U_sys * 24; % W
 
 %% Load data
 load("HP_fitted_data.mat");
-data_0 = readtable("20241030_162031_diya06.csv");
+data_0 = readtable("Measurements\20241030_154642_diya06.csv");
 
 %% Compute values
 T_LED = convtemp(mean([data_0.T1_C, data_0.T2_C], 2), 'C', 'K'); % K, mean along the rows
@@ -22,19 +22,14 @@ x14 = S_M * I_HP;
 x23 = T_amb - T_cell;
 x314 = T_LED;
 y1 = 0.5 * R_M * I_HP.^2 + K_M * (U_sys * x_HP - R_M * I_HP) / S_M + Q_LED;
-y3 = y1 - Q_LED;
+y3 = [y3_1, y3_2, ..., y3_N];
 
 %% Initial guesses for [theta1, theta2, theta3, theta4]
 initial_guess = [10; 1/5; 1/25; (273+39)];
 
+% Call lsqnonlin to minimize the sum of squared residuals
 options = optimoptions('lsqnonlin', 'Display', 'iter');
-
-lower_bound = [0; 0; 0; 0];
-upper_bound = [500; 10; 2; 350];
-
-% Call lsqnonlin with bounds
-[theta_estimates, resnorm] = lsqnonlin(@(theta) myResiduals(theta, N, x12, x14, x23, x314, y1, y3), initial_guess, lower_bound, upper_bound, options);
-
+[theta_estimates, resnorm] = lsqnonlin(@myResiduals, initial_guess, [], [], options);
 
 % Display results
 disp('Residual norm:')
@@ -46,7 +41,7 @@ fprintf('R_i = %.2f\n', 1/theta_estimates(3));
 fprintf('T_c = %.2f\n', theta_estimates(4));
 
 %% Define the function that calculates residuals
-function residuals = myResiduals(theta, N, x12, x14, x23, x314, y1, y3)
+function residuals = myResiduals(theta)
     % Extract parameters
     theta1 = theta(1);
     theta2 = theta(2);
