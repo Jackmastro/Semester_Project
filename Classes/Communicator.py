@@ -13,8 +13,7 @@ class Communicator:
         self.last_message = None
         self.verbose = verbose
 
-        self.client = mqtt.Client()
-        # self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -28,6 +27,8 @@ class Communicator:
             print("Connection failed")
 
     def _on_message_parser(self, message) -> None:
+        """ Example message:
+        message = 20000101T193040 TMP&U 25.44 27.21 33.60 Peltier: 80 Fan: 0"""
         parts = message.split()
 
         timestamp = parts[0]
@@ -45,7 +46,14 @@ class Communicator:
 
     def on_message(self, client, userdata, message) -> None:
         self.last_message = message.payload.decode()
-        self._on_message_parser(self.last_message)
+    
+        # Check if the message matches the expected format
+        if "Peltier:" in self.last_message and "Fan:" in self.last_message:
+            # This is a full measurement message
+            self._on_message_parser(self.last_message)
+        else:
+            # Handle other types of messages
+            print("Received non-standard message:", self.last_message)
 
     def send_control_input(self, x_HP:int, x_FAN:int) -> None:
         sign_HP = "+" if x_HP >= 0 else "-"
