@@ -11,8 +11,9 @@ data_0 = readtable("20241030_162031_diya06.csv");
 
 %% Compute values
 T_LED = convtemp(mean([data_0.T1_C, data_0.T2_C], 2), 'C', 'K'); % K, mean along the rows
-T_cell = convtemp(T_LED + 1, 'C', 'K'); % K
+T_cell = T_LED - 1; % K
 I_HP = max(zeros(size(data_0.I_HP_mA)), data_0.I_HP_mA ./ 1000); % only positive values
+% I_HP = data_0.I_HP_mA ./ 1000; % only positive values
 x_HP = data_0.x_HP;
 
 N = height(data_0);
@@ -30,7 +31,7 @@ initial_guess = [10; 1/5; 1/25; (273+39)];
 options = optimoptions('lsqnonlin', 'Display', 'iter');
 
 lower_bound = [0; 0; 0; 0];
-upper_bound = [500; 10; 2; 350];
+upper_bound = [500; 10; 2; 330];
 
 % Call lsqnonlin with bounds
 [theta_estimates, resnorm] = lsqnonlin(@(theta) myResiduals(theta, N, x12, x14, x23, x314, y1, y3), initial_guess, lower_bound, upper_bound, options);
