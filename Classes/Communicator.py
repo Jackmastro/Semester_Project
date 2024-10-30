@@ -1,59 +1,83 @@
 import paho.mqtt.client as mqtt
+import time
+import datetime
+import pandas as pd
+from IPython.display import display
+import threading
+
 
 class Communicator:
-    def __init__(self, diya_name:str, verbose:bool=False) -> None:
+    def __init__(self, diya_name:str, save_data:bool=False, save_frequency:int=60, verbose:bool=False) -> None:
         # Define the MQTT broker details
-        self.broker = "mqtt.119.ovh"
-        self.port = 1883
-        self.topic = "diya" + diya_name
-        self.read_topic = self.topic + "/rx/"
-        self.transmit_topic = self.topic + "/tx/"
-        self.keep_alive = 60
+        self.BROKER = "mqtt.119.ovh"
+        self.PORT = 1883
+        self.TOPIC = "diya" + diya_name
+        self.READ_TOPIC = self.TOPIC + "/rx/"
+        self.TRANSMIT_TOPIC = self.TOPIC + "/tx/"
+        self.KEEP_ALIVE = 60
 
-        self.last_message = None
-        self.verbose = verbose
+        self.MEASUREMENT_NAME = ["T_1", "T_2", "T_3", "x_HP", "x_FAN"]
+        self.last_measurement:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
 
+        self.SAVE_DATA:bool = save_data
+        self.SAVE_FREQUENCY:int = save_frequency
+        self.historical_data:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
+        
+        # Variables for saving data at intervals
+        self._last_append_time = datetime.now()
+        self._stop_event = threading.Event()
+        self.append_thread = threading.Thread(target=self._append_to_history_at_intervals)
+
+        self.verbose:bool = verbose
+
+        # Create a new MQTT client instance
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
-        self.client.connect(self.broker, self.port, self.keep_alive)
+        self.client.connect(self.BROKER, self.PORT, self.KEEP_ALIVE)
 
     def on_connect(self, client, userdata, flags, rc) -> None:
         if rc == 0:
-            client.subscribe(self.read_topic)
-            print(f"Subscribed to {self.read_topic}")
+            client.subscribe(self.READ_TOPIC)
+            if self.verbose:
+                print(f"Subscribed to {self.READ_TOPIC}")
         else:
-            print("Connection failed")
+            if self.verbose:
+                print("Connection failed")
 
     def _on_message_parser(self, message) -> None:
         """ Example message:
         message = 20000101T193040 TMP&U 25.44 27.21 33.60 Peltier: 80 Fan: 0"""
         parts = message.split()
 
-        timestamp = parts[0]
-        sensor_label = parts[1]
-        T_1 = float(parts[2])
-        T_2 = float(parts[3])
-        T_3 = float(parts[4])
+        index = time.now()
+        values = [float(parts[2]), float(parts[3]), float(parts[4]), int(parts[6]), int(parts[8])]
+        self.last_measurement = pd.DataFrame([values], columns=self.MEASUREMENT_NAME, index=[index])
 
-        peltier_value = int(parts[6])
-        fan_value = int(parts[8])
-
-        print("Measurements:", T_1, T_2, T_3)
-        print("Peltier Value:", peltier_value)
-        print("Fan Value:", fan_value)
+        display(self.last_measurement)
 
     def on_message(self, client, userdata, message) -> None:
-        self.last_message = message.payload.decode()
+        last_message = message.payload.decode()
     
         # Check if the message matches the expected format
-        if "Peltier:" in self.last_message and "Fan:" in self.last_message:
+        if "Peltier:" in last_message and "Fan:" in last_message:
             # This is a full measurement message
-            self._on_message_parser(self.last_message)
+            self._on_message_parser(last_message)
         else:
             # Handle other types of messages
-            print("Received non-standard message:", self.last_message)
+            print("Received non-standard message:", last_message)
+
+    def _append_to_history_at_intervals(self) -> None:
+        while not self._stop_event.is_set():
+            if (datetime.now() - self._last_append_time).seconds >= self.SAVE_FREQUENCY:
+                self.historical_data = pd.concat([self.historical_data, self.last_measurement])
+                self._last_append_time = datetime.now()
+                if self.verbose:
+                    print("Data saved to history")
+            
+            # Sleep briefly to avoid tight looping
+            time.sleep(1)
 
     def send_control_input(self, x_HP:int, x_FAN:int) -> None:
         sign_HP = "+" if x_HP >= 0 else "-"
@@ -67,14 +91,23 @@ class Communicator:
         x_FAN_formatted = f"{int(x_FAN):03d}"
         message_str = f"S{x_HP_formatted}{x_FAN_formatted}"
 
-        self.client.publish(self.transmit_topic, message_str)
+        self.client.publish(self.TRANSMIT_TOPIC, message_str)
         print(f"Message sent: x_HP = {x_HP}, x_FAN = {x_FAN}")
 
     def start(self) -> None:
         self.client.loop_start()
+
+        if self.SAVE_DATA:
+            self._last_append_time = datetime.now()
+            self.append_thread.start()
+
         print("Communicator started")
 
     def stop(self) -> None:
+        if self.SAVE_DATA:
+            self._stop_event.set()
+            self.append_thread.join()
+
         self.client.loop_stop()
         self.client.disconnect()
         print("Communicator stopped")
@@ -84,8 +117,6 @@ class Communicator:
         print("Communicator deleted")
 
 ##########################################################################
-import time
-
 if __name__ == '__main__':
     diya_name = "06"
     comm = Communicator(diya_name, verbose=True)
@@ -93,3 +124,4 @@ if __name__ == '__main__':
     comm.send_control_input(100, 0)
     time.sleep(5)
     comm.send_control_input(10, 0)
+    comm.stop()
