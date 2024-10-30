@@ -85,9 +85,15 @@ class Communicator:
 
     def _append_to_history_at_intervals(self) -> None:
         while not self._stop_event.is_set():
+            if self.last_measurement.empty:
+                continue
+
             if (datetime.datetime.now() - self._last_append_time).seconds >= self.SAVE_FREQUENCY:
-                self.measurements = pd.concat([self.measurements, self.last_measurement])
-                self._last_append_time = datetime.datetime.now()
+                if self.measurements.empty:
+                    self.measurements = self.last_measurement
+                else:
+                    self.measurements = pd.concat([self.measurements, self.last_measurement])
+                    self._last_append_time = datetime.datetime.now()
                 if self.verbose:
                     print("Data saved to history")
             
@@ -148,9 +154,27 @@ class Communicator:
 ##########################################################################
 if __name__ == '__main__':
     diya_name = "06"
-    comm = Communicator(diya_name, verbose=True)
-    comm.start()
-    comm.send_control_input(100, 0)
-    time.sleep(5)
-    comm.send_control_input(10, 0)
-    comm.stop()
+    comm = Communicator(diya_name, save_data=True, save_frequency=2, choose_specific_directory=False, verbose=True)
+    
+    x_HP = 0
+    x_FAN = 0
+
+    continue_loop = True
+    initial_time = datetime.datetime.now()
+    duration = 11 # seconds
+
+    try:
+        comm.start()
+        comm.send_control_input(x_HP, x_FAN)
+
+        while continue_loop:
+            current_time = datetime.datetime.now()
+            elapsed_time = current_time - initial_time
+            if elapsed_time.total_seconds() > duration:
+                continue_loop = False
+
+    except KeyboardInterrupt:
+        print("Interrupted by user")
+
+    finally:
+        comm.stop()
