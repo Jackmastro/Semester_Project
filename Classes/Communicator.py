@@ -32,17 +32,16 @@ class Communicator:
         self.append_thread = threading.Thread(target=self._append_to_history_at_intervals)
 
         # Set the save directory
+        self.save_directory = 'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Measurements'
+
         if choose_specific_directory:
             root = tk.Tk()
             root.withdraw()  # Hide the main window
             root.lift()  # Bring the window to the front
             root.attributes('-topmost', True)  # Keep the window on top of all others
             
-            self.save_directory = filedialog.askdirectory(title='Select a Folder to Save the Measurements')
+            self.save_directory = filedialog.askdirectory(title='Select a Folder to Save the Measurements', initialdir=self.save_directory)
             root.destroy()
-
-        else:
-            self.save_directory = 'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Measurements'
 
         self.verbose:bool = verbose
 
@@ -53,7 +52,8 @@ class Communicator:
         self.client.on_message = self.on_message
         self.client.connect(self.BROKER, self.PORT, self.KEEP_ALIVE)
 
-    def on_connect(self, client, userdata, flags, rc) -> None:
+    def on_connect(self, client, userdata, flags, rc, *args) -> None:
+        # Reason code 0 means successful connection
         if rc == 0:
             client.subscribe(self.READ_TOPIC)
             if self.verbose:
@@ -71,23 +71,23 @@ class Communicator:
         values = [float(parts[2]), float(parts[3]), float(parts[4]), int(parts[6]), int(parts[8])]
         self.last_measurement = pd.DataFrame([values], columns=self.MEASUREMENT_NAME, index=[index])
 
-        display(self.last_measurement)
+        print(self.last_measurement)
 
     def on_message(self, client, userdata, message) -> None:
         last_message = message.payload.decode()
     
         # Check if the message matches the expected format
         if "TMP&U" not in last_message or "Peltier:" not in last_message or "Fan:" not in last_message:
+            print("Received non-standard message:", last_message)
+        else:
             # This is a full measurement message
             self._on_message_parser(last_message)
-        else:
-            print("Received non-standard message:", last_message)
 
     def _append_to_history_at_intervals(self) -> None:
         while not self._stop_event.is_set():
-            if (datetime.now() - self._last_append_time).seconds >= self.SAVE_FREQUENCY:
+            if (datetime.datetime.now() - self._last_append_time).seconds >= self.SAVE_FREQUENCY:
                 self.measurements = pd.concat([self.measurements, self.last_measurement])
-                self._last_append_time = datetime.now()
+                self._last_append_time = datetime.datetime.now()
                 if self.verbose:
                     print("Data saved to history")
             
@@ -126,7 +126,7 @@ class Communicator:
         self.client.loop_start()
 
         if self.SAVE_DATA:
-            self._last_append_time = datetime.now()
+            self._last_append_time = datetime.datetime.now()
             self.append_thread.start()
 
         print("Communicator started")
