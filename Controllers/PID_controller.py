@@ -1,3 +1,4 @@
+# Simple PID library https://github.com/m-lundberg/simple-pid/tree/master (Documentation: https://pypi.org/project/simple-pid/)
 from simple_pid import PID
 import numpy as np
 

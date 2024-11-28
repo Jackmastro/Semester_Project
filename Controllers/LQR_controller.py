@@ -3,7 +3,7 @@ from scipy.linalg import solve_discrete_are
 
 class LQRController:
     """ Infinite horizon LQR controller """
-    def __init__(self, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
+    def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
         # Check dimensions of A, B, Q, R
         if A.shape[0] != A.shape[1]:
             raise ValueError("Matrix A must be square.")
