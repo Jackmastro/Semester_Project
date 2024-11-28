@@ -2,7 +2,6 @@ import paho.mqtt.client as mqtt
 import time
 import datetime
 import pandas as pd
-from IPython.display import display
 import threading
 import tkinter as tk
 from tkinter import filedialog

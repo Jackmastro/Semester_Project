@@ -19,6 +19,7 @@ class Model:
         x3: T_HP_h
         """
         # State input initialization
+        self.x0 = x0
         self.x = x0
         self.u = np.array([0.0, 0.0])
 
@@ -297,3 +298,7 @@ class Model:
         x[1] = np.clip(x[1], 0.0, conv_temp(100.0, 'C', 'K'))
         x[2] = np.clip(x[2], 0.0, conv_temp(100.0, 'C', 'K'))
         return x
+
+    @property
+    def get_initial_state(self) -> np.ndarray:
+        return self.x0
