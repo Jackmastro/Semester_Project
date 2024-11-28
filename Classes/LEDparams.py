@@ -5,22 +5,22 @@ class LEDparams:
     def __init__(self) -> None:
         self.I_LED = 0.017 # A
         
-        # TODO identify values
+        # Identified at 0.017 A at 25°C
         radiant_power_dict = {
-            'IR':       3.0,
-            'Red':      4.0,
-            'Orange':   4.0,
-            'Green':    4.5,
-            'Blue':     5.0,
-            'Purple':   5.5,
-            'UV':       6.0
+            'IR':       5.94,
+            'Red':      1.70,
+            'Orange':   1.18,
+            'Green':    4.60,
+            'Blue':     6.56,
+            'Purple':   8.21,
+            'UV':       3.92
         } # mW/cm^2
 
         # Convert to numpy array
         specific_radiant_power = np.array([radiant_power_dict[color] for color in radiant_power_dict.keys()]) # mW/cm^2
 
         # Single hole
-        diameter = 7 # mm
+        diameter = 6.7 # mm
         cross_section = np.pi * (diameter/10/2)**2 # cm^2
         self.radiant_power = cross_section * specific_radiant_power / 1000 # W
 
@@ -33,6 +33,7 @@ class LEDparams:
     def program_reader(self) -> np.ndarray:
         """ Returns the total duty cycle, single LED constant current and total radiant power"""
         x_matrix = np.random.randint(0, 2**16-1, self.dimensions) # TODO implement program reader
+        x_matrix = x_matrix / 5 # TODO decrease losses
 
         x_matrix_scaled = x_matrix / (2**16-1) # duty cycle
 
@@ -42,8 +43,17 @@ class LEDparams:
 
         return self.x_LED_tot, self.I_LED, self.P_r
 
-
-
 ##########################################################################
 if __name__ == '__main__':
-    print("ProgramReader class definition")
+    U_BT = 3.7 # V
+    LEDpar = LEDparams()
+
+    x_LED, I_LED, P_r = LEDpar.program_reader()
+
+    I_LED_tot = I_LED * x_LED # A
+    P_LED = U_BT * I_LED_tot # W
+    Q_LED_tot = P_LED - P_r # W
+    
+    print(f"Total LED power: {P_LED:.2f} W")
+    print(f"Total radiant power: {P_r:.2f} W")
+    print(f"Total LED power loss: {Q_LED_tot:.2f} W")
