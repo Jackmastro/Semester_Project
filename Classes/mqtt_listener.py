@@ -357,5 +357,4 @@ class MQTTListener:
 if __name__ == "__main__":
     # Create and start the listener
     listener = MQTTListener()
-    listener.start() 
-    
+    listener.start()

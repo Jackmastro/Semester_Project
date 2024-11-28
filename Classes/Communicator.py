@@ -69,7 +69,8 @@ class Communicator:
         parts = message.split()
 
         if parts == [] or "TAS" not in parts[0] or len(parts) != 9:
-            print("Received non-standard message")
+            if self.verbose:
+                print("Received non-standard message")
             return
         
         index = index = datetime.datetime.now()
@@ -83,11 +84,11 @@ class Communicator:
         
         self.last_measurement = pd.DataFrame([values], columns=self.MEASUREMENT_NAME, index=[index])
 
-        print(self.last_measurement)
+        if self.verbose:
+            print(self.last_measurement)
 
     def on_message(self, client, userdata, message) -> None:
         last_message = message.payload.decode()
-        print("ricevuto")
 
         self._on_message_parser(last_message)
 
@@ -126,7 +127,8 @@ class Communicator:
         message_str = f"X{I_HP_formatted}"
 
         self.client.publish(self.TRANSMIT_TOPIC, message_str)
-        print(f"Message sent: I_HP = {I_HP}, x_FAN = {x_FAN}")
+        if self.verbose:
+            print(f"Message sent: I_HP = {I_HP}, x_FAN = {x_FAN}")
 
     def save_measurements(self) -> None:
         if self.save_directory:
