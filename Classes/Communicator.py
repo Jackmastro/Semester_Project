@@ -19,8 +19,9 @@ class Communicator:
         self.TRANSMIT_TOPIC = self.TOPIC + "/tx/"
         self.KEEP_ALIVE = 10
 
-        self.MEASUREMENT_NAME = ["T1_C", "T2_C", "T3_C", "x_HP", "x_FAN", "U_HP_V", "I_HP_mA"]
-        self.last_measurement:pd.DataFrame = pd.DataFrame(columns=self.MEASUREMENT_NAME)
+        self.MEASUREMENT_NAME = ["T1_C", "T2_C", "T3_C", "x_HP", "x_FAN", "U_HP_mV", "I_HP_mA"]
+        initial_values = [25, 25, 25, 0, 0, 0, 0]
+        self.last_measurement: pd.DataFrame = pd.DataFrame([initial_values], columns=self.MEASUREMENT_NAME)
 
         self.SAVE_DATA:bool = save_data
         self.SAVE_FREQUENCY:int = save_frequency # in seconds
@@ -72,13 +73,13 @@ class Communicator:
             return
         
         index = index = datetime.datetime.now()
-        values = [float(parts[2]), # T_1
-                  float(parts[3]), # T_2
-                  float(parts[4]), # T_3
+        values = [float(parts[2]), # T_1 [°C]
+                  float(parts[3]), # T_2 [°C]
+                  float(parts[4]), # T_3 [°C]
                   int(parts[5]),   # x_HP
                   int(parts[6]),   # x_FAN
-                  float(parts[7]), # U_HP
-                  float(parts[8])] # I_HP
+                  float(parts[7]), # U_HP [mV]
+                  float(parts[8])] # I_HP [mA]
         
         self.last_measurement = pd.DataFrame([values], columns=self.MEASUREMENT_NAME, index=[index])
 
@@ -86,6 +87,7 @@ class Communicator:
 
     def on_message(self, client, userdata, message) -> None:
         last_message = message.payload.decode()
+        print("ricevuto")
 
         self._on_message_parser(last_message)
 
@@ -106,20 +108,25 @@ class Communicator:
             # Sleep briefly to avoid tight looping
             time.sleep(1)
 
-    def send_control_input(self, x_HP:int, x_FAN:int) -> None:
-        sign_HP = "+" if x_HP >= 0 else "-"
+    def send_control_input(self, I_HP:float, x_FAN:float) -> None:
+        """ I_HP in A
+            x_FAN in % """
+        # sign_HP = "+" if I_HP >= 0 else "-"
 
         # Bound control values
-        x_HP = max(min(x_HP, 100), -100)
+        I_HP = max(min(I_HP, 6.6), -6.6) # TODO better bounds?
         x_FAN = max(min(x_FAN, 100), 0)
 
         # Format control values
-        x_HP_formatted = f"{sign_HP}{abs(int(x_HP)):03d}"
-        x_FAN_formatted = f"{int(x_FAN):03d}"
-        message_str = f"S{x_HP_formatted}{x_FAN_formatted}"
+        # I_HP_formatted = f"{sign_HP}{abs(int(I_HP)):03d}"
+        # x_FAN_formatted = f"{int(x_FAN):03d}"
+        # message_str = f"S{I_HP_formatted}{x_FAN_formatted}"
+
+        I_HP_formatted = f"{abs(int(I_HP*1000)):07d}"
+        message_str = f"X{I_HP_formatted}"
 
         self.client.publish(self.TRANSMIT_TOPIC, message_str)
-        print(f"Message sent: x_HP = {x_HP}, x_FAN = {x_FAN}")
+        print(f"Message sent: I_HP = {I_HP}, x_FAN = {x_FAN}")
 
     def save_measurements(self) -> None:
         if self.save_directory:
@@ -160,9 +167,9 @@ class Communicator:
 ##########################################################################
 if __name__ == '__main__':
     diya_name = "06"
-    comm = Communicator(diya_name, save_data=True, save_frequency=2, choose_specific_directory=False, verbose=True)
+    comm = Communicator(diya_name, save_data=False, save_frequency=2, choose_specific_directory=False, verbose=True)
 
-    x_HP = 0
+    I_HP = 0
     x_FAN = 0
 
     continue_loop = True
@@ -171,7 +178,7 @@ if __name__ == '__main__':
 
     try:
         comm.start()
-        comm.send_control_input(x_HP, x_FAN)
+        # comm.send_control_input(x_HP, x_FAN)
 
         while continue_loop:
             current_time = datetime.datetime.now()
