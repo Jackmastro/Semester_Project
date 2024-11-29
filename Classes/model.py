@@ -3,6 +3,7 @@ import pandas as pd
 import sympy as sp
 from IPython.display import display, Markdown
 from scipy.constants import convert_temperature as conv_temp
+from scipy.signal import cont2discrete
 
 from Classes.LED_params import LEDparams
 
@@ -112,6 +113,8 @@ class Model:
         self.S_M = HP_params["S_M"].iloc[0] # V/K
         self.K_M = HP_params["K_M"].iloc[0] # W/K
 
+        self.DeltaT_max = HP_params["DeltaT_max"].iloc[0] # K
+
         I_HP_max_datasheet = HP_params["I_max"].iloc[0] # A
         I_HP_max_electronics = 3.0 # A when attached to the battery
         self.I_HP_max = min(I_HP_max_datasheet, I_HP_max_electronics) # A
@@ -183,6 +186,12 @@ class Model:
         I_BT = U_oc + R_in * sp.sqrt(I_HP**2) + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * sp.sqrt(I_HP**2) + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * sp.sqrt(I_HP**2) - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
         U_BT = U_oc - R_in * I_BT # V
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
+        # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 1.0, x_SoC: 1.0}))
+        # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 0.0, x_SoC: 1.0}))
+        # display(Markdown(r"$U_{BT}^{min}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 0.0, x_SoC: 0.0}))
+        # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 1.0, x_SoC: 1.0}))
+        # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 1.0}))
+        # display(Markdown(r"$U_{BT}^{min}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 0.0}))
 
         # HP calculation
         P_HP = U_HP * I_HP # W
@@ -228,7 +237,7 @@ class Model:
         self.I_BT_num   = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
         self.T_cell_num = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
 
-    def get_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+    def get_continuous_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
             xss = self.x_op
         if uss is None:
@@ -242,6 +251,12 @@ class Model:
         l = self.g_num(xss, uss).reshape(-1,)
 
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32)
+    
+    def get_discrete_linearization(self, Ts:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        A, B, h, C, D, l = self.get_continuous_linearization(xss, uss)
+        A_d, B_d, C_d, D_d, _ = cont2discrete((A, B, C, D), dt=Ts, method='zoh')
+        
+        return A_d, B_d, h, C_d, D_d, l
     
     def dynamics_f(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         return np.array(self.f_num(x, u)).flatten()
