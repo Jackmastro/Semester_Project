@@ -199,7 +199,7 @@ class Model:
 
         # Symbolic dynamics, output and linearization
         self.f_symb = sp.Matrix([dxSoC_dt, dTc_dt, dTh_dt])
-        self.g_symb = sp.Matrix([T_c, I_BT])
+        self.g_symb = sp.Matrix([T_c])
         # display(Markdown(r"$\dot{x} = f(x, u):$"), self.f_symb)
         # display(Markdown(r"$y = g(x, u):$"), self.g_symb)
 
@@ -225,6 +225,7 @@ class Model:
         self.U_oc_num = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
         self.U_HP_num = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
         self.COP_num  = sp.lambdify((self.sym_x, self.sym_u), COP.subs(self.params_values), modules="numpy")
+        self.I_BT_num = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
 
     def get_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
@@ -279,7 +280,8 @@ class Model:
         U_oc = np.array(self.U_oc_num(x, u)).flatten()
         U_HP = np.array(self.U_HP_num(x, u)).flatten()
         COP  = np.array(self.COP_num(x, u)).flatten()
-        return np.array([U_BT, U_oc, U_HP, COP]).flatten()
+        I_BT = np.array(self.I_BT_num(x, u)).flatten()
+        return np.array([U_BT, U_oc, U_HP, COP, I_BT]).flatten()
 
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         # HP current bounds
