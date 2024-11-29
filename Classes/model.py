@@ -285,12 +285,11 @@ class Model:
 
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         # HP current bounds
-        u[0] = np.clip(u[0], -self.I_HP_max, self.I_HP_max)
-
         I_HP_max_I_source = (self.U_BT_num(x, u) - self.S_M * (x[2] - x[1])) / self.R_M
         I_HP_min_I_source = (-self.U_BT_num(x, u) - self.S_M * (x[2] - x[1])) / self.R_M
         u[0] = np.clip(u[0], I_HP_min_I_source, I_HP_max_I_source)
-
+        u[0] = np.clip(u[0], -self.I_HP_max, self.I_HP_max)
+        
         # Fan duty cycle bounds
         u[1] = np.clip(u[1], 0.0, 1.0)
         return u
