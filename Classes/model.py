@@ -176,7 +176,7 @@ class Model:
         ### Calculations
         # Output: T_cell
         T_cell = R5 * Q_LEDcell + T_amb # K
-        # display(Markdown(r"$T_{cell}:$"), T_cell.subs(self.params_values))
+        # display(Markdown(r"$T_{cell}:$"), T_cell)
 
         # Output: I_BT
         # I_BT = U_oc + R_in * I_HP + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * I_HP + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * I_HP - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
@@ -221,11 +221,12 @@ class Model:
 
         ## Values
         # Voltages
-        self.U_BT_num = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
-        self.U_oc_num = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
-        self.U_HP_num = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
-        self.COP_num  = sp.lambdify((self.sym_x, self.sym_u), COP.subs(self.params_values), modules="numpy")
-        self.I_BT_num = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
+        self.U_BT_num   = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
+        self.U_oc_num   = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
+        self.U_HP_num   = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
+        self.COP_num    = sp.lambdify((self.sym_x, self.sym_u), COP.subs(self.params_values), modules="numpy")
+        self.I_BT_num   = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
+        self.T_cell_num = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
 
     def get_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
@@ -235,10 +236,10 @@ class Model:
 
         A = self.A_num(xss, uss)
         B = self.B_num(xss, uss)
-        h = self.f_num(xss, uss)
+        h = self.f_num(xss, uss).reshape(-1,)
         C = self.C_num(xss, uss)
         D = self.D_num(xss, uss)
-        l = self.g_num(xss, uss)
+        l = self.g_num(xss, uss).reshape(-1,)
 
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32)
     
@@ -281,7 +282,8 @@ class Model:
         U_HP = np.array(self.U_HP_num(x, u)).flatten()
         COP  = np.array(self.COP_num(x, u)).flatten()
         I_BT = np.array(self.I_BT_num(x, u)).flatten()
-        return np.array([U_BT, U_oc, U_HP, COP, I_BT]).flatten()
+        T_cell = np.array(self.T_cell_num(x, u)).flatten()
+        return np.array([U_BT, U_oc, U_HP, COP, I_BT, T_cell]).flatten()
 
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         # HP current bounds
@@ -289,7 +291,7 @@ class Model:
         I_HP_min_I_source = (-self.U_BT_num(x, u) - self.S_M * (x[2] - x[1])) / self.R_M
         u[0] = np.clip(u[0], I_HP_min_I_source, I_HP_max_I_source)
         u[0] = np.clip(u[0], -self.I_HP_max, self.I_HP_max)
-        
+
         # Fan duty cycle bounds
         u[1] = np.clip(u[1], 0.0, 1.0)
         return u
@@ -303,3 +305,11 @@ class Model:
     @property
     def get_initial_state(self) -> np.ndarray:
         return self.x0
+    
+    @property
+    def get_operational_state(self) -> np.ndarray:
+        return self.x_op
+    
+    @property
+    def get_operational_input(self) -> np.ndarray:
+        return self.u_op
