@@ -5,7 +5,7 @@ from IPython.display import display, Markdown
 from scipy.constants import convert_temperature as conv_temp
 from scipy.signal import cont2discrete
 
-from Classes.LED_params import LEDparams
+from classes.LED_params import LEDparams
 
 class Model:
     def __init__(self, LEDparams:LEDparams, x0:np.ndarray, T_amb0:float=conv_temp(25.0, 'C', 'K')) -> None:
@@ -71,14 +71,14 @@ class Model:
         self.Q_BT_max = 3.0 * 3600 # As (Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
         self.BT_coefs = pd.read_csv(
-            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Data\\Battery\\battery_fitted_coefficients_3rd.csv'
+            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\battery\\battery_fitted_coefficients_3rd.csv'
             )
 
         # Fan parameters
         self.I_FAN = 0.13 # A
         self.U_FAN = 12.0 # V
         self.FAN_coefs = pd.read_csv(
-            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Data\\Fan\\fan_coefficients.csv'
+            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\fan\\fan_coefficients.csv'
             )
 
         # LED parameters
@@ -107,7 +107,7 @@ class Model:
 
         # Heat pump - peltier module
         HP_params = pd.read_csv(
-            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Data\\Heat Pump\\HP_fitted_coefficients.csv'
+            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\heat_pump\\HP_fitted_coefficients.csv'
             )
         self.R_M = HP_params["R_M"].iloc[0] # Ohm
         self.S_M = HP_params["S_M"].iloc[0] # V/K

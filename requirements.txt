@@ -1,0 +1,12 @@
+numpy
+pandas
+matplotlib
+phaseportrait
+scipy
+setuptools
+simple-pid
+cvxpy
+paho-mqtt
+sympy
+ipython
+tk

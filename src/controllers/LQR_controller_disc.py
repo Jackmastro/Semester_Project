@@ -1,8 +1,9 @@
+from .controller_base import ControllerBase
 import numpy as np
 from scipy.linalg import solve_discrete_are
-from Classes import Model
+from classes import Model
 
-class LQRController_disc:
+class LQRController_disc(ControllerBase):
     """ Infinite horizon LQR controller """
     def __init__(self, model:Model, setpoint:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
         # Calculate offset for converting Tc to T_cell

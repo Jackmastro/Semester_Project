@@ -32,7 +32,7 @@ class Communicator:
         self.append_thread = threading.Thread(target=self._append_to_history_at_intervals)
 
         # Set the save directory
-        self.save_directory = 'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\Measurements'
+        self.save_directory = 'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\measurements'
 
         if choose_specific_directory:
             root = tk.Tk()
