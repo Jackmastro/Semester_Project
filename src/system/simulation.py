@@ -36,25 +36,25 @@ class Simulation:
         }
 
     def run(self) -> pd.DataFrame:
-        x = self.x0
+        x_prev = self.x0
 
         for t in range(self.time_steps):
             current_time = t * self.dt
 
             y = self.model.get_output()
 
-            u = self.controller.get_control_input(x, y)
-
-            # Advance system states
-            x = self.model.discretized_update(u, self.dt)
+            u = self.controller.get_control_input(x_prev, y)
 
             # Get internal values
-            values = self.model.get_values(x, u)
+            values = self.model.get_values(x_prev, u)
+
+            # Advance system states
+            x_next = self.model.discretized_update(u, self.dt)
 
             self.data["time"].append(current_time)
-            self.data["SoC"].append(x[0])
-            self.data["T_c"].append(x[1])
-            self.data["T_h"].append(x[2])
+            self.data["SoC"].append(x_next[0])
+            self.data["T_c"].append(x_next[1])
+            self.data["T_h"].append(x_next[2])
             self.data["I_HP"].append(u[0])
             self.data["x_FAN"].append(u[1])
             self.data["T_cell"].append(values["T_cell"])
@@ -64,7 +64,9 @@ class Simulation:
             self.data["U_HP"].append(values["U_HP"])
             self.data["COP"].append(values["COP"])
 
-        # Remove last element of the states and temperatures
+            x_prev = x_next
+
+        # Remove last element of the states and temperatures to have equal length
         self.data["SoC"].pop()
         self.data["T_c"].pop()
         self.data["T_h"].pop()

@@ -19,11 +19,11 @@ class Model:
         x2: T_HP_c
         x3: T_HP_h
         """
-        # State input initialization
+        # Initial condition
         self.x0 = x0
-        self.x = x0
-        self.u0 = np.array([0.0, 0.0])
-        self.u = self.u0
+        self.x_prev = x0
+        self.x_next = None
+        self.u = np.array([0.0, 0.0])
 
         # Parameters initialization
         self._init_params(LEDparams, T_amb0)
@@ -269,7 +269,7 @@ class Model:
         """
         Update the states using Runge-Kutta of 4th order integration.
         """
-        x = self.x
+        x = self.x_prev
 
         # Bound input
         u = self._input_bounds(x, u)
@@ -281,16 +281,18 @@ class Model:
         k[2] = self.dynamics_f(x + 0.5 * dt * k[1], u)
         k[3] = self.dynamics_f(x + dt * k[2], u)
 
-        self.x = x + (dt / 6.0) * (k[0] + 2 * k[1] + 2 * k[2] + k[3])
+        self.x_next = x + (dt / 6.0) * (k[0] + 2 * k[1] + 2 * k[2] + k[3])
         self.u = u
 
         # Bound states
-        self.x = self._states_bounds(self.x)
+        self.x_next = self._states_bounds(self.x_next)
+
+        self.x_prev = self.x_next
         
-        return self.x
+        return self.x_next
     
     def get_output(self) -> np.ndarray:
-        return self.observer_g(self.x, self.u)
+        return self.observer_g(self.x_prev, self.u)
     
     def get_values(self, x:np.ndarray, u:np.ndarray) -> dict:
         return {
@@ -322,10 +324,6 @@ class Model:
     @property
     def get_initial_state(self) -> np.ndarray:
         return self.x0
-    
-    @property
-    def get_initial_input(self) -> np.ndarray:
-        return self.u0
     
     @property
     def get_operational_state(self) -> np.ndarray:
