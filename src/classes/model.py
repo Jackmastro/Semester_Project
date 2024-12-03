@@ -23,7 +23,7 @@ class Model:
         self.x0 = x0
         self.x_prev = x0
         self.x_next = None
-        self.u = np.array([0.0, 0.0])
+        self.u = np.array([0.0, 0.0]) # needed for symbolic initialization
 
         # Parameters initialization
         self._init_params(LEDparams, T_amb0)
@@ -282,11 +282,12 @@ class Model:
         k[3] = self.dynamics_f(x + dt * k[2], u)
 
         self.x_next = x + (dt / 6.0) * (k[0] + 2 * k[1] + 2 * k[2] + k[3])
-        self.u = u
 
         # Bound states
         self.x_next = self._states_bounds(self.x_next)
 
+        # Update
+        self.u = u
         self.x_prev = self.x_next
         
         return self.x_next
