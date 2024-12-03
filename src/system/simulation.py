@@ -1,4 +1,6 @@
 import pandas as pd
+from IPython.display import display
+
 from classes import Model
 from controllers import ControllerBase
 
@@ -16,14 +18,16 @@ class Simulation:
         self.time_span = time_span
         self.time_steps = int(self.time_span / self.dt)
 
+        self.x0 = self.model.get_initial_state
+
         self.data = {
             "time":     [],
-            "SoC":      [],
-            "T_HP_c":   [],
-            "T_HP_h":   [],
+            "SoC":      [self.x0[0]],
+            "T_c":      [self.x0[1]],
+            "T_h":      [self.x0[2]],
             "I_HP":     [],
             "x_FAN":    [],
-            "T_cell":   [],
+            "T_cell":   [self.x0[1]], # Assuming equal to Tc
             "I_BT":     [],
             "U_BT":     [],
             "U_oc":     [],
@@ -32,7 +36,7 @@ class Simulation:
         }
 
     def run(self) -> pd.DataFrame:
-        x = self.model.get_initial_state
+        x = self.x0
 
         for t in range(self.time_steps):
             current_time = t * self.dt
@@ -49,15 +53,21 @@ class Simulation:
 
             self.data["time"].append(current_time)
             self.data["SoC"].append(x[0])
-            self.data["T_HP_c"].append(x[1])
-            self.data["T_HP_h"].append(x[2])
+            self.data["T_c"].append(x[1])
+            self.data["T_h"].append(x[2])
             self.data["I_HP"].append(u[0])
             self.data["x_FAN"].append(u[1])
-            self.data["T_cell"].append(values[5])
-            self.data["I_BT"].append(values[4])
-            self.data["U_BT"].append(values[0])
-            self.data["U_oc"].append(values[1])
-            self.data["U_HP"].append(values[2])
-            self.data["COP"].append(values[3])
+            self.data["T_cell"].append(values["T_cell"])
+            self.data["I_BT"].append(values["I_BT"])
+            self.data["U_BT"].append(values["U_BT"])
+            self.data["U_oc"].append(values["U_oc"])
+            self.data["U_HP"].append(values["U_HP"])
+            self.data["COP"].append(values["COP"])
+
+        # Remove last element of the states and temperatures
+        self.data["SoC"].pop()
+        self.data["T_c"].pop()
+        self.data["T_h"].pop()
+        self.data["T_cell"].pop()
 
         return pd.DataFrame(self.data)

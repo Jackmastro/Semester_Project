@@ -22,7 +22,8 @@ class Model:
         # State input initialization
         self.x0 = x0
         self.x = x0
-        self.u = np.array([0.0, 0.0])
+        self.u0 = np.array([0.0, 0.0])
+        self.u = self.u0
 
         # Parameters initialization
         self._init_params(LEDparams, T_amb0)
@@ -291,14 +292,15 @@ class Model:
     def get_output(self) -> np.ndarray:
         return self.observer_g(self.x, self.u)
     
-    def get_values(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
-        U_BT = np.array(self.U_BT_num(x, u)).flatten()
-        U_oc = np.array(self.U_oc_num(x, u)).flatten()
-        U_HP = np.array(self.U_HP_num(x, u)).flatten()
-        COP  = np.array(self.COP_num(x, u)).flatten()
-        I_BT = np.array(self.I_BT_num(x, u)).flatten()
-        T_cell = np.array(self.T_cell_num(x, u)).flatten()
-        return np.array([U_BT, U_oc, U_HP, COP, I_BT, T_cell]).flatten()
+    def get_values(self, x:np.ndarray, u:np.ndarray) -> dict:
+        return {
+            'U_BT':     self.U_BT_num(x, u),
+            'U_oc':     self.U_oc_num(x, u),
+            'U_HP':     self.U_HP_num(x, u),
+            'COP':      self.COP_num(x, u),
+            'I_BT':     self.I_BT_num(x, u),
+            'T_cell':   self.T_cell_num(x, u),
+        }
 
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         # HP current bounds
@@ -320,6 +322,10 @@ class Model:
     @property
     def get_initial_state(self) -> np.ndarray:
         return self.x0
+    
+    @property
+    def get_initial_input(self) -> np.ndarray:
+        return self.u0
     
     @property
     def get_operational_state(self) -> np.ndarray:
