@@ -237,6 +237,9 @@ class Model:
         self.I_BT_num   = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
         self.T_cell_num = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
 
+        # Zero order approximation for U_BT
+        self.U_BT_zero_order = self.U_BT_num(self.x_op, self.u_op)
+
     def get_continuous_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
             xss = self.x_op
@@ -271,14 +274,14 @@ class Model:
         x = self.x_prev
 
         # Bound input
-        u = self._input_bounds(x, u)
+        u_bounded = self._input_bounds(x, u)
 
         # Runge-Kutta 4th order
         k = np.zeros((4, len(x)))
-        k[0] = self.dynamics_f(x, u)
-        k[1] = self.dynamics_f(x + 0.5 * dt * k[0], u)
-        k[2] = self.dynamics_f(x + 0.5 * dt * k[1], u)
-        k[3] = self.dynamics_f(x + dt * k[2], u)
+        k[0] = self.dynamics_f(x, u_bounded)
+        k[1] = self.dynamics_f(x + 0.5 * dt * k[0], u_bounded)
+        k[2] = self.dynamics_f(x + 0.5 * dt * k[1], u_bounded)
+        k[3] = self.dynamics_f(x + dt * k[2], u_bounded)
 
         self.x_next = x + (dt / 6.0) * (k[0] + 2 * k[1] + 2 * k[2] + k[3])
 
@@ -286,10 +289,10 @@ class Model:
         self.x_next = self._states_bounds(self.x_next)
 
         # Update
-        self.u = u
+        self.u = u_bounded
         self.x_prev = self.x_next
         
-        return self.x_next
+        return self.x_next, self.u
     
     def get_output(self) -> np.ndarray:
         return self.observer_g(self.x_prev, self.u)
@@ -305,21 +308,26 @@ class Model:
         }
 
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
+        u_bounded = np.copy(u)
+
         # HP current bounds
-        I_HP_max_I_source = (self.U_BT_num(x, u) - self.S_M * (x[2] - x[1])) / self.R_M
-        I_HP_min_I_source = (-self.U_BT_num(x, u) - self.S_M * (x[2] - x[1])) / self.R_M
-        u[0] = np.clip(u[0], I_HP_min_I_source, I_HP_max_I_source)
-        u[0] = np.clip(u[0], -self.I_HP_max, self.I_HP_max)
+        U_BT = self.U_BT_zero_order #self.U_BT_num(x, u)
+        I_HP_max_I_source = (U_BT - self.S_M * (x[2] - x[1])) / self.R_M
+        I_HP_min_I_source = (- U_BT - self.S_M * (x[2] - x[1])) / self.R_M
+        u_bounded[0] = np.clip(u_bounded[0], I_HP_min_I_source, I_HP_max_I_source)
+        u_bounded[0] = np.clip(u_bounded[0], -self.I_HP_max, self.I_HP_max)
 
         # Fan duty cycle bounds
-        u[1] = np.clip(u[1], 0.0, 1.0)
-        return u
+        u_bounded[1] = np.clip(u_bounded[1], 0.0, 1.0)
+        return u_bounded
     
     def _states_bounds(self, x:np.ndarray) -> np.ndarray:
-        x[0] = np.clip(x[0], 0.0, 1.0)
-        x[1] = np.clip(x[1], 0.0, conv_temp(100.0, 'C', 'K'))
-        x[2] = np.clip(x[2], 0.0, conv_temp(100.0, 'C', 'K'))
-        return x
+        x_bounded = np.copy(x)
+
+        x_bounded[0] = np.clip(x[0], 0.0, 1.0)
+        x_bounded[1] = np.clip(x[1], 0.0, conv_temp(100.0, 'C', 'K'))
+        x_bounded[2] = np.clip(x[2], 0.0, conv_temp(100.0, 'C', 'K'))
+        return x_bounded
 
     @property
     def get_initial_state(self) -> np.ndarray:

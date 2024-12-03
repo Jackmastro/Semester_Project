@@ -10,10 +10,11 @@ class LQRController_cont(ControllerBase):
         R_frac = (model.R_4_lambda + model.R_5) / model.R_5
         self.Tc_inf = (setpoint - model.T_amb) * R_frac + model.T_amb
 
+        self.x_bar = np.array([0, self.Tc_inf, 0])
+
         # Solve Riccati equation
         self.P = solve_continuous_are(A, B, Q, R)
         self.K = -np.linalg.inv(R) @ B.T @ self.P
 
     def get_control_input(self, x:np.ndarray, y:np.ndarray) -> np.ndarray:
-        x[1] = x[1] - self.Tc_inf
-        return self.K @ x
+        return self.K @ (x - self.x_bar)

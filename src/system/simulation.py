@@ -45,18 +45,18 @@ class Simulation:
 
             u = self.controller.get_control_input(x_prev, y)
 
-            # Get internal values
-            values = self.model.get_values(x_prev, u)
-
             # Advance system states
-            x_next = self.model.discretized_update(u, self.dt)
+            x_next, u_bounded = self.model.discretized_update(u, self.dt)
+
+            # Get internal values
+            values = self.model.get_values(x_prev, u_bounded)
 
             self.data["time"].append(current_time)
             self.data["SoC"].append(x_next[0])
             self.data["T_c"].append(x_next[1])
             self.data["T_h"].append(x_next[2])
-            self.data["I_HP"].append(u[0])
-            self.data["x_FAN"].append(u[1])
+            self.data["I_HP"].append(u_bounded[0])
+            self.data["x_FAN"].append(u_bounded[1])
             self.data["T_cell"].append(values["T_cell"])
             self.data["I_BT"].append(values["I_BT"])
             self.data["U_BT"].append(values["U_BT"])
