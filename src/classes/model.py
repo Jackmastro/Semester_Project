@@ -246,10 +246,10 @@ class Model:
 
         A = self.A_num(xss, uss)
         B = self.B_num(xss, uss)
-        h = self.f_num(xss, uss).reshape(-1,)
+        h = self.f_num(xss, uss).reshape(-1,) - A @ xss - B @ uss
         C = self.C_num(xss, uss)
         D = self.D_num(xss, uss)
-        l = self.g_num(xss, uss).reshape(-1,)
+        l = self.g_num(xss, uss).reshape(-1,) - C @ xss - D @ uss
 
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32)
     
