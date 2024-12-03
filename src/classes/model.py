@@ -229,8 +229,7 @@ class Model:
         self.C_num = sp.lambdify((self.sym_x, self.sym_u), self.C_symb.subs(self.params_values), modules="numpy")
         self.D_num = sp.lambdify((self.sym_x, self.sym_u), self.D_symb.subs(self.params_values), modules="numpy")
 
-        ## Values
-        # Voltages
+        # Values
         self.U_BT_num   = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
         self.U_oc_num   = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
         self.U_HP_num   = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
