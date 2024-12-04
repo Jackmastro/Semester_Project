@@ -1,5 +1,4 @@
 import pandas as pd
-from IPython.display import display
 
 from classes import Model
 from controllers import ControllerBase
