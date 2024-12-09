@@ -4,7 +4,7 @@ import numpy as np
 
 class TestController(ControllerBase):
     def __init__(self) -> None:
-        pass
+        self.setpoint = 0.0
 
     def get_control_input(self) -> np.ndarray:
         u_HP = 0.0

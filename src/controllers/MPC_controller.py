@@ -4,6 +4,8 @@ import cvxpy as cp
 
 class MPController(ControllerBase):
     def __init__(self, model, Q:np.ndarray, S:np.ndarray, R:np.ndarray, pred_time:int, sampling_time:int, discret_time:int, print_output:bool=False, verbose:bool=False) -> None:
+        # self.setpoint = setpoint
+        
         self.Q = Q
         self.S = S
         self.R = R

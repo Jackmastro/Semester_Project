@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.constants import convert_temperature as conv_temp
 
 from classes import Model
 from controllers import ControllerBase
@@ -72,3 +74,76 @@ class Simulation:
         self.data["T_cell"].pop()
 
         return pd.DataFrame(self.data)
+    
+    def plot_results(self, results:pd.DataFrame) -> None:
+        # Conversion
+        results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
+
+        xlimits = (0, self.time_span)
+
+        fig, axs = plt.subplots(2, 2, figsize=(15, 4))
+
+        # Temperatures (first row spanning both columns)
+        axs[0, 0].remove()  # Remove the first subplot
+        axs[0, 1].remove()  # Remove the second subplot
+        ax_temp = fig.add_subplot(2, 1, 1)  # Create a new subplot spanning the top row
+        results.plot(
+            x="time",
+            y=["T_cell", "T_c", "T_h"],
+            xlabel="Time [s]",
+            ylabel="Temperature [°C]",
+            title="Temperatures",
+            ax=ax_temp,
+            color=["lightblue", "blue", "red"]
+        )
+        ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
+        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='--', label='Ambient')
+        ax_temp.legend()
+        ax_temp.grid()
+        ax_temp.set_xlim(xlimits)
+
+        # SoC and x_FAN (second row, first column)
+        results.plot(
+            x="time",
+            y=["SoC", "x_FAN"],
+            xlabel="Time [s]",
+            ylabel="Percentage [%]",
+            title="SoC and x_FAN",
+            ax=axs[1, 0],
+            color=["green", "orange"]
+        )
+        axs[1, 0].grid()
+        axs[1, 0].set_xlim(xlimits)
+
+        # Currents and Voltages (second row, second column, dual y-axis)
+        ax_curr = axs[1, 1]
+        ax_volt = ax_curr.twinx()
+
+        results.plot(
+            x="time",
+            y=["I_HP", "I_BT"],
+            xlabel="Time [s]",
+            ylabel="Current [A]",
+            title="Currents and Voltages",
+            ax=ax_curr,
+            legend=False,
+            color=["orange", "green"]
+        )
+        results.plot(
+            x="time",
+            y=["U_oc", "U_BT", "U_HP"],
+            xlabel="Time [s]",
+            ylabel="Voltage [V]",
+            ax=ax_volt,
+            legend=False,
+            color=["lightgreen", "green", "orange"],
+            style="--"
+        )
+        ax_curr.legend(["I_HP", "I_BT"], loc="lower left")
+        ax_volt.legend(["U_oc", "U_BT", "U_HP"], loc="lower right")
+        ax_curr.grid()
+        ax_curr.set_xlim(xlimits)
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.show()

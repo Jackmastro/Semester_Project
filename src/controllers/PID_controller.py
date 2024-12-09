@@ -5,6 +5,7 @@ import numpy as np
 
 class PIDController(ControllerBase):
     def __init__(self, kp:float, ki:float, kd:float, setpoint:float, dt:float, output_limits:tuple) -> None:
+        self.setpoint = setpoint
         self.pid = PID(Kp=kp, Ki=ki, Kd=kd, setpoint=setpoint, sample_time=dt, output_limits=output_limits)
 
     def get_control_input(self, x:np.ndarray, y:np.ndarray) -> np.ndarray:
