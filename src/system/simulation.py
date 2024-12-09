@@ -177,11 +177,6 @@ class Simulation:
         x_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
         y_sim = results["I_HP"].to_numpy()
         
-        # Color map
-        COP_sim = np.abs(results["COP"].to_numpy())
-        cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
-        norm = Normalize(vmin=0, vmax=5)
-
         # Arrows
         arrow_step = 80
 
@@ -189,7 +184,10 @@ class Simulation:
         x_vec = np.linspace(-100, 100, self.time_steps)
         y_vec_min, y_vec_max = self.model.get_voltage_constraints(x_vec)
 
-        # Prepare the color gradient for the Simulation line
+        # Color gradient for COP
+        COP_sim = np.abs(results["COP"].to_numpy())
+        cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
+        norm = Normalize(vmin=0, vmax=5)
         points = np.array([x_sim, y_sim]).T.reshape(-1, 1, 2)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
         lc = LineCollection(segments, cmap=cmap, norm=norm)
@@ -224,5 +222,5 @@ class Simulation:
         plt.title('Current-Temperature Phase Space')
         plt.legend()
         plt.grid()
-        plt.colorbar(lc, label='COP')  # Add a colorbar to show the COP scale
+        plt.colorbar(lc, label='COP')
         plt.show()
