@@ -306,14 +306,18 @@ class Model:
             'I_BT':     self.I_BT_num(x, u),
             'T_cell':   self.T_cell_num(x, u),
         }
-
+    
+    def get_voltage_constraints(self, delta_T:np.ndarray) -> np.ndarray:
+        U_BT = self.U_BT_zero_order #self.U_BT_num(x, u)
+        I_HP_max_I_source = (U_BT - self.S_M * delta_T) / self.R_M
+        I_HP_min_I_source = (- U_BT - self.S_M * delta_T) / self.R_M
+        return I_HP_min_I_source, I_HP_max_I_source
+    
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         u_bounded = np.copy(u)
 
         # HP current bounds
-        U_BT = self.U_BT_zero_order #self.U_BT_num(x, u)
-        I_HP_max_I_source = (U_BT - self.S_M * (x[2] - x[1])) / self.R_M
-        I_HP_min_I_source = (- U_BT - self.S_M * (x[2] - x[1])) / self.R_M
+        I_HP_min_I_source, I_HP_max_I_source = self.get_voltage_constraints(x[2] - x[1])
         u_bounded[0] = np.clip(u_bounded[0], I_HP_min_I_source, I_HP_max_I_source)
         u_bounded[0] = np.clip(u_bounded[0], -self.I_HP_max, self.I_HP_max)
 
