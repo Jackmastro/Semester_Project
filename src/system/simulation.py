@@ -35,6 +35,7 @@ class Simulation:
             "U_HP":     [],
             "COP":      [],
         }
+        self.data_df:pd.DataFrame = pd.DataFrame()
 
     def run(self) -> pd.DataFrame:
         x_prev = self.x0
@@ -73,14 +74,16 @@ class Simulation:
         self.data["T_h"].pop()
         self.data["T_cell"].pop()
 
-        return pd.DataFrame(self.data)
+        self.data_df = pd.DataFrame(self.data)
+
+        return self.data_df
     
     def plot_results(self, results:pd.DataFrame=None) -> None:
         if results is None:
-            if self.data is None:
+            if self.data_df is None:
                 raise ValueError("No data to plot")
-            results = self.data
-            
+            results = self.data_df
+
         # Conversion
         results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
 
@@ -92,6 +95,8 @@ class Simulation:
         axs[0, 0].remove()  # Remove the first subplot
         axs[0, 1].remove()  # Remove the second subplot
         ax_temp = fig.add_subplot(2, 1, 1)  # Create a new subplot spanning the top row
+        ax_temp.axhline(y=0, lw=1, color='k', label='_nolegend_')
+        ax_temp.axvline(x=0, lw=1, color='k', label='_nolegend_')
         results.plot(
             x="time",
             y=["T_cell", "T_c", "T_h"],
@@ -108,6 +113,8 @@ class Simulation:
         ax_temp.set_xlim(xlimits)
 
         # SoC and x_FAN (second row, first column)
+        axs[1, 0].axhline(y=0, lw=1, color='k', label='_nolegend_')
+        axs[1, 0].axvline(x=0, lw=1, color='k', label='_nolegend_')
         results.plot(
             x="time",
             y=["SoC", "x_FAN"],
@@ -124,6 +131,8 @@ class Simulation:
         ax_curr = axs[1, 1]
         ax_volt = ax_curr.twinx()
 
+        ax_curr.axhline(y=0, lw=1, color='k', label='_nolegend_')
+        ax_curr.axvline(x=0, lw=1, color='k', label='_nolegend_')
         results.plot(
             x="time",
             y=["I_HP", "I_BT"],
