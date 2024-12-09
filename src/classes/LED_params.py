@@ -33,6 +33,13 @@ class LEDparams:
     def program_reader(self) -> np.ndarray:
         """ Returns the total duty cycle, single LED constant current and total radiant power"""
         x_matrix = np.random.randint(0, 2**16-1, self.dimensions) # TODO implement program reader
+
+        # Min
+        # x_matrix = np.zeros(self.dimensions)
+
+        # Max
+        # x_matrix = np.ones(self.dimensions) * (2**16-1)
+
         x_matrix = x_matrix / 5 # TODO decrease losses
 
         x_matrix_scaled = x_matrix / (2**16-1) # duty cycle
@@ -54,6 +61,7 @@ if __name__ == '__main__':
     P_LED = U_BT * I_LED_tot # W
     Q_LED_tot = P_LED - P_r # W
     
+    print(f"Total duty cycle: {x_LED:.2f}")
     print(f"Total LED power: {P_LED:.2f} W")
     print(f"Total radiant power: {P_r:.2f} W")
     print(f"Total LED power loss: {Q_LED_tot:.2f} W")

@@ -10,7 +10,7 @@ class LQRController_cont(ControllerBase):
         R_frac = (model.R_4_lambda + model.R_5) / model.R_5
         self.Tc_inf = (setpoint - model.T_amb) * R_frac + model.T_amb
 
-        self.x_bar = np.array([0, self.Tc_inf, 0])
+        self.x_bar = np.array([1, self.Tc_inf, model.T_amb])
 
         # Solve Riccati equation
         self.P = solve_continuous_are(A, B, Q, R)
