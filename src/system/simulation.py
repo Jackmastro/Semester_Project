@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from scipy.constants import convert_temperature as conv_temp
 
 from classes import Model
@@ -90,7 +92,7 @@ class Simulation:
 
         xlimits = (0, self.time_span)
 
-        fig, axs = plt.subplots(2, 2, figsize=(15, 3))
+        fig, axs = plt.subplots(2, 2, figsize=(15, 4))
 
         # Temperatures (first row spanning both columns)
         axs[0, 0].remove()  # Remove the first subplot
@@ -163,7 +165,7 @@ class Simulation:
         plt.tight_layout()
         plt.show()
 
-    def plot_current_temperature(self, results:pd.DataFrame=None) -> None:
+    def plot_current_temperature(self, results: pd.DataFrame = None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -174,7 +176,11 @@ class Simulation:
 
         x_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
         y_sim = results["I_HP"].to_numpy()
-        COP_sim = results["COP"].to_numpy()
+        
+        # Color map
+        COP_sim = np.abs(results["COP"].to_numpy())
+        cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
+        norm = Normalize(vmin=0, vmax=5)
 
         # Arrows
         arrow_step = 80
@@ -183,16 +189,24 @@ class Simulation:
         x_vec = np.linspace(-100, 100, self.time_steps)
         y_vec_min, y_vec_max = self.model.get_voltage_constraints(x_vec)
 
+        # Prepare the color gradient for the Simulation line
+        points = np.array([x_sim, y_sim]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        lc = LineCollection(segments, cmap=cmap, norm=norm)
+        lc.set_array(COP_sim)
+        lc.set_linewidth(2)
+
         # Plot
-        plt.figure(figsize=(8, 3))
+        plt.figure(figsize=(10, 2))
         plt.axhline(y=0, lw=1, color='black', label='_nolegend_')
         plt.axvline(x=0, lw=1, color='black', label='_nolegend_')
-        plt.plot(x_sim, y_sim, label="Simulation", color='red')
+        plt.gca().add_collection(lc)
+
         for i in range(0, len(x_sim) - arrow_step, arrow_step):
             plt.arrow(
                 x_sim[i], y_sim[i], 
                 x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i], 
-                head_width=0.15, head_length=1.5, fc='red', ec='red', alpha=0.2
+                head_width=0.15, head_length=1.5, fc=cmap(norm(COP_sim[i])), ec=cmap(norm(COP_sim[i])), alpha=0.2
             )
 
         plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
@@ -205,9 +219,10 @@ class Simulation:
         # Configure plot
         plt.xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
         plt.ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
-        plt.xlabel(r'$\Delta T \; [°]$')
+        plt.xlabel(r'$\Delta T \; [\degree]$')
         plt.ylabel(r'$I_\mathrm{HP} \; [A]$')
         plt.title('Current-Temperature Phase Space')
         plt.legend()
         plt.grid()
+        plt.colorbar(lc, label='COP')  # Add a colorbar to show the COP scale
         plt.show()
