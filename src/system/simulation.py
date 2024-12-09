@@ -89,7 +89,7 @@ class Simulation:
 
         xlimits = (0, self.time_span)
 
-        fig, axs = plt.subplots(2, 2, figsize=(15, 4))
+        fig, axs = plt.subplots(2, 2, figsize=(15, 3))
 
         # Temperatures (first row spanning both columns)
         axs[0, 0].remove()  # Remove the first subplot
