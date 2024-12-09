@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import convert_temperature as conv_temp
 
@@ -78,7 +79,7 @@ class Simulation:
 
         return self.data_df
     
-    def plot_results(self, results:pd.DataFrame=None) -> None:
+    def plot_time_results(self, results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -160,4 +161,53 @@ class Simulation:
 
         # Adjust layout
         plt.tight_layout()
+        plt.show()
+
+    def plot_current_temperature(self, results:pd.DataFrame=None) -> None:
+        if results is None:
+            if self.data_df is None:
+                raise ValueError("No data to plot")
+            results = self.data_df
+
+        # Conversion
+        results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
+
+        x_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
+        y_sim = results["I_HP"].to_numpy()
+        COP_sim = results["COP"].to_numpy()
+
+        # Arrows
+        arrow_step = 80
+
+        # Voltage constraints
+        x_vec = np.linspace(-100, 100, self.time_steps)
+        y_vec_min, y_vec_max = self.model.get_voltage_constraints(x_vec)
+
+        # Plot
+        plt.figure(figsize=(8, 3))
+        plt.axhline(y=0, lw=1, color='black', label='_nolegend_')
+        plt.axvline(x=0, lw=1, color='black', label='_nolegend_')
+        plt.plot(x_sim, y_sim, label="Simulation", color='red')
+        for i in range(0, len(x_sim) - arrow_step, arrow_step):
+            plt.arrow(
+                x_sim[i], y_sim[i], 
+                x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i], 
+                head_width=0.15, head_length=1.5, fc='red', ec='red', alpha=0.2
+            )
+
+        plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
+        plt.plot(x_vec, y_vec_max, color='black', linestyle=':')
+        plt.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
+        plt.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
+        plt.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
+        plt.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
+
+        # Configure plot
+        plt.xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
+        plt.ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
+        plt.xlabel(r'$\Delta T \; [°]$')
+        plt.ylabel(r'$I_\mathrm{HP} \; [A]$')
+        plt.title('Current-Temperature Phase Space')
+        plt.legend()
+        plt.grid()
         plt.show()
