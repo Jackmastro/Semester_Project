@@ -329,20 +329,20 @@ class Model:
         x_bounded[2] = np.clip(x[2], 0.0, conv_temp(100.0, 'C', 'K'))
         return x_bounded
     
-def save_linearized_model(self, directory:str, type:str, Ts:float=None) -> None:
-    if type == 'continuous':
-        variables = self.get_continuous_linearization()
-        names = ['A', 'B', 'h', 'C', 'D', 'l']
-    elif type == 'discrete':
-        if Ts is None:
-            raise ValueError("Ts must be provided for discrete linearization")
-        variables = self.get_discrete_linearization(Ts)
-        names = ['Ad', 'Bd', 'h', 'Cd', 'Dd', 'l']
-    else:
-        raise ValueError("Type must be either 'continuous' or 'discrete'")
+    def save_linearized_model(self, directory:str, type:str, Ts:float=None) -> None:
+        if type == 'continuous':
+            variables = self.get_continuous_linearization()
+            names = ['A', 'B', 'h', 'C', 'D', 'l']
+        elif type == 'discrete':
+            if Ts is None:
+                raise ValueError("Ts must be provided for discrete linearization")
+            variables = self.get_discrete_linearization(Ts)
+            names = ['Ad', 'Bd', 'h', 'Cd', 'Dd', 'l']
+        else:
+            raise ValueError("Type must be either 'continuous' or 'discrete'")
 
-    for name, variable in zip(names, variables):
-        np.savetxt(f"{directory}{name}.csv", variable, delimiter=',')
+        for name, variable in zip(names, variables):
+            np.savetxt(f"{directory}{name}.csv", variable, delimiter=',')
 
     @property
     def get_initial_state(self) -> np.ndarray:

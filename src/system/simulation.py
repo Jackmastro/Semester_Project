@@ -75,7 +75,12 @@ class Simulation:
 
         return pd.DataFrame(self.data)
     
-    def plot_results(self, results:pd.DataFrame) -> None:
+    def plot_results(self, results:pd.DataFrame=None) -> None:
+        if results is None:
+            if self.data is None:
+                raise ValueError("No data to plot")
+            results = self.data
+            
         # Conversion
         results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
 
