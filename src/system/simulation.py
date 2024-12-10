@@ -93,7 +93,7 @@ class Simulation:
 
         xlimits = (0, self.time_span)
 
-        fig, axs = plt.subplots(2, 3, figsize=(15, 4))
+        fig, axs = plt.subplots(2, 3, figsize=(15, 5))
 
         # Temperatures (first row spanning all columns)
         for ax in axs[0]:  # Remove all subplots in the first row
@@ -189,7 +189,7 @@ class Simulation:
         )
         ax_volt.grid()
         ax_volt.set_xlim(xlimits)
-        ax_volt.set_ylim(-5.3, 5.3)
+        ax_volt.set_ylim(-4.3, 4.3)
 
         # Add minor ticks
         ax_volt.xaxis.set_minor_locator(ticker.AutoMinorLocator())
