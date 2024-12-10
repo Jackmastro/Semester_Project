@@ -59,6 +59,7 @@ class Model:
             'R4_lambda':    self.R_4_lambda,
             'R5':           self.R_5,
             'Q_rest':       self.Q_rest,
+            'I_rest':       self.I_rest
         }
 
         # Operational point initialization
@@ -69,6 +70,7 @@ class Model:
 
     def _init_params(self, LEDparams:LEDparams, T_amb0:float) -> None:
         self.P_el_rest = 1.0 # W TODO get better value
+        self.I_rest = 0.5 #
         self.n_BT = 2
         self.Q_BT_max = 3.0 * 3600 # As (Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
@@ -142,7 +144,7 @@ class Model:
         self.sym_u  = sp.Matrix([I_HP, x_FAN])
 
         # Battery parameters
-        n, Q_max, R_in, P_rest = sp.symbols('n_BT, Q_max, R_in, P_rest')
+        n, Q_max, R_in, P_rest, I_rest = sp.symbols('n_BT, Q_max, R_in, P_rest, I_rest')
         a3, a2, a1, a0 = sp.symbols('a3, a2, a1, a0')
         U_oc = a3 * x_SoC**3 + a2 * x_SoC**2 + a1 * x_SoC + a0 # V
         # display(Markdown(r"$U_{oc}(x_{SoC}):$"), U_oc.subs(self.params_values))
@@ -186,7 +188,8 @@ class Model:
 
         # Output: I_BT
         # I_BT = U_oc + R_in * I_HP + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * I_HP + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * I_HP - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
-        I_BT = U_oc + R_in * sp.sqrt(I_HP**2) + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * sp.sqrt(I_HP**2) + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * sp.sqrt(I_HP**2) - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
+        # I_BT = U_oc + R_in * sp.sqrt(I_HP**2) + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * sp.sqrt(I_HP**2) + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * sp.sqrt(I_HP**2) - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
+        I_BT = I_FAN * x_FAN + sp.sqrt(I_HP**2) + I_LED * x_LED + I_rest # A
         U_BT = U_oc - R_in * I_BT # V
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
         # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 1.0, x_SoC: 1.0}))
