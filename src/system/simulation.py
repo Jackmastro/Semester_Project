@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from matplotlib.collections import LineCollection
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from scipy.constants import convert_temperature as conv_temp
@@ -81,7 +82,7 @@ class Simulation:
 
         return self.data_df
     
-    def plot_time_results(self, title:str="", results:pd.DataFrame=None) -> None:
+    def plot_time_results(self, title: str = "", results: pd.DataFrame = None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -110,10 +111,18 @@ class Simulation:
             color=["lightblue", "blue", "red"]
         )
         ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
-        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='--', label='Ambient')
-        ax_temp.legend()
+        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
+        ax_temp.legend(loc="center right")
         ax_temp.grid()
         ax_temp.set_xlim(xlimits)
+
+        # Add minor ticks
+        ax_temp.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_temp.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_temp.tick_params(axis='x', which='minor', direction='in', top=True)
+        ax_temp.tick_params(axis='y', which='minor', direction='in', left=True)
+        ax_temp.tick_params(axis='x', which='major', top=True)
+        ax_temp.tick_params(axis='y', which='major', left=True)
 
         # SoC and x_FAN (second row, first column)
         axs[1, 0].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -129,6 +138,15 @@ class Simulation:
         )
         axs[1, 0].grid()
         axs[1, 0].set_xlim(xlimits)
+        axs[1, 0].set_ylim(-0.1, 1.1)
+
+        # Add minor ticks
+        axs[1, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        axs[1, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        axs[1, 0].tick_params(axis='x', which='minor', direction='in', top=True)
+        axs[1, 0].tick_params(axis='y', which='minor', direction='in', left=True)
+        axs[1, 0].tick_params(axis='x', which='major', top=True)
+        axs[1, 0].tick_params(axis='y', which='major', left=True)
 
         # Currents and Voltages (second row, second column, dual y-axis)
         ax_curr = axs[1, 1]
@@ -154,18 +172,29 @@ class Simulation:
             ax=ax_volt,
             legend=False,
             color=["green", "orange"],
-            style="-."
+            style="--"
         )
         ax_curr.legend(["I_BT", "I_HP"], loc="center left")
         ax_volt.legend(["U_BT", "U_HP"], loc="center right")
         ax_curr.grid()
         ax_curr.set_xlim(xlimits)
 
+        # Add minor ticks to both y-axes
+        ax_curr.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_curr.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_volt.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_curr.tick_params(axis='x', which='minor', direction='in', top=True)
+        ax_curr.tick_params(axis='y', which='minor', direction='in', left=True)
+        ax_volt.tick_params(axis='y', which='minor', direction='in', right=True)
+        ax_curr.tick_params(axis='x', which='major', top=True)
+        ax_curr.tick_params(axis='y', which='major', left=True)
+        ax_volt.tick_params(axis='y', which='major', right=True)
+
         # Adjust layout
         plt.tight_layout()
         plt.show()
 
-    def plot_current_temperature(self, title:str="", results:pd.DataFrame=None) -> None:
+    def plot_current_temperature(self, title: str = "", results: pd.DataFrame = None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -176,7 +205,7 @@ class Simulation:
 
         x_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
         y_sim = results["I_HP"].to_numpy()
-        
+
         # Arrows
         arrow_step = 80
 
@@ -186,8 +215,9 @@ class Simulation:
 
         # Color gradient for COP
         COP_sim = results["COP"].to_numpy()
-        mask = y_sim < 0 # get negative current values
-        COP = COP_sim.copy() - mask # correct for negative values by substracting 1
+        mask = y_sim < 0  # get negative current values
+        COP = COP_sim.copy() - mask  # correct for negative values by subtracting 1
+
         cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
         norm = Normalize(vmin=0, vmax=5)
         points = np.array([x_sim, y_sim]).T.reshape(-1, 1, 2)
@@ -197,34 +227,51 @@ class Simulation:
         lc.set_linewidth(2)
 
         # Plot
-        plt.figure(figsize=(10, 2))
-        plt.axhline(y=0, lw=1, color='black', label='_nolegend_')
-        plt.axvline(x=0, lw=1, color='black', label='_nolegend_')
-        plt.gca().add_collection(lc)
+        fig, ax = plt.subplots(figsize=(10, 2))
+        ax.axhline(y=0, lw=1, color='black', label='_nolegend_')
+        ax.axvline(x=0, lw=1, color='black', label='_nolegend_')
+        ax.add_collection(lc)
 
         for i in range(0, len(x_sim) - arrow_step, arrow_step):
-            plt.arrow(
-                x_sim[i], y_sim[i], 
-                x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i], 
+            ax.arrow(
+                x_sim[i], y_sim[i],
+                x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i],
                 head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
             )
 
-        plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
-        plt.plot(x_vec, y_vec_max, color='black', linestyle=':')
-        plt.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
-        plt.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
-        plt.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
-        plt.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
+        ax.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
+        ax.plot(x_vec, y_vec_max, color='black', linestyle=':')
+        ax.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
+        ax.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
+        ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
+        ax.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
 
         # Configure plot
-        plt.xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
-        plt.ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
-        plt.xlabel(r'$\Delta T \; [\degree]$')
-        plt.ylabel(r'$I_\mathrm{HP} \; [A]$')
-        plt.title('Current-Temperature Phase Space ' + title)
-        plt.legend()
-        plt.grid()
-        plt.colorbar(lc, label='COP')
+        ax.set_xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
+        ax.set_ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
+        ax.set_xlabel(r'$\Delta T \; [\degree]$')
+        ax.set_ylabel(r'$I_\mathrm{HP} \; [A]$')
+        ax.set_title('Current-Temperature Phase Space ' + title)
+        ax.legend()
+        ax.grid()
+
+        # Add minor ticks
+        ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax.tick_params(axis='x', which='minor', direction='in', top=True)
+        ax.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
+        ax.tick_params(axis='x', which='major', top=True)
+        ax.tick_params(axis='y', which='major', left=True, right=True)
+
+        # Add a box around all edges
+        ax.spines['top'].set_visible(True)
+        ax.spines['right'].set_visible(True)
+        ax.spines['bottom'].set_visible(True)
+        ax.spines['left'].set_visible(True)
+
+        # Display colorbar
+        cbar = plt.colorbar(lc, ax=ax, label='COP')
+        
         plt.show()
 
     def plot_HP_operation(self, results:pd.DataFrame=None) -> None:

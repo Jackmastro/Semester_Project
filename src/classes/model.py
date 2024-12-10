@@ -125,7 +125,7 @@ class Model:
     def _init_operational_point(self) -> None:
         x_SoC = 0.85
         T_c   = conv_temp(self.T_amb, 'C', 'K') # K
-        T_h   = conv_temp(self.T_amb + 30.0, 'C', 'K') # K
+        T_h   = conv_temp(self.T_amb + 10.0, 'C', 'K') # K
         I_HP  = 1.2 # A
         x_FAN = 1.0 # duty cycle
 
