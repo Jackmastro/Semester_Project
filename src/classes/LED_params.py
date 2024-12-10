@@ -30,20 +30,8 @@ class LEDparams:
         plate_col = 12
         self.dimensions = (num_colors, plate_row, plate_col)
 
-    def program_reader(self) -> np.ndarray:
+    def program_reader(self, x_matrix_scaled:np.ndarray) -> np.ndarray:
         """ Returns the total duty cycle, single LED constant current and total radiant power"""
-        x_matrix = np.random.randint(0, 2**16-1, self.dimensions) # TODO implement program reader
-
-        # Min
-        # x_matrix = np.zeros(self.dimensions)
-
-        # Max
-        # x_matrix = np.ones(self.dimensions) * (2**16-1)
-
-        x_matrix = x_matrix / 5 # TODO decrease losses
-
-        x_matrix_scaled = x_matrix / (2**16-1) # duty cycle
-
         self.P_r = np.sum(x_matrix_scaled * self.radiant_power[:, np.newaxis, np.newaxis]) # W
 
         self.x_LED_tot = np.sum(x_matrix_scaled) # total duty cycle assuming equal current for all LEDs
@@ -52,7 +40,7 @@ class LEDparams:
 
 ##########################################################################
 if __name__ == '__main__':
-    U_BT = 3.7 # V
+    U_BT = 4.0 # V
     LEDpar = LEDparams()
 
     x_LED, I_LED, P_r = LEDpar.program_reader()

@@ -237,9 +237,6 @@ class Model:
         self.I_BT_num   = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
         self.T_cell_num = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
 
-        # Zero order approximation for U_BT
-        self.U_BT_zero_order = self.U_BT_num(self.x_op, self.u_op)
-
     def get_continuous_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
             xss = self.x_op
@@ -308,7 +305,8 @@ class Model:
         }
     
     def get_voltage_constraints(self, delta_T:np.ndarray) -> np.ndarray:
-        U_BT = self.U_BT_zero_order #self.U_BT_num(x, u)
+        # Zero order approximation for U_BT
+        U_BT = self.U_BT_num(self.x_op, self.u_op) # TODO use max and min values
         I_HP_max_I_source = (U_BT - self.S_M * delta_T) / self.R_M
         I_HP_min_I_source = (- U_BT - self.S_M * delta_T) / self.R_M
         return I_HP_min_I_source, I_HP_max_I_source

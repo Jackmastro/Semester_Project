@@ -114,7 +114,7 @@ class Communicator:
         # sign_HP = "+" if I_HP >= 0 else "-"
 
         # Bound control values
-        I_HP = max(min(I_HP, 6.6), -6.6) # TODO better bounds?
+        I_HP = max(min(I_HP, 6.6), -6.6) # TODO better bounds? and pass as ...
         x_FAN = max(min(x_FAN, 100), 0)
 
         # Format control values

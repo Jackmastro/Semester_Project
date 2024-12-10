@@ -165,7 +165,7 @@ class Simulation:
         plt.tight_layout()
         plt.show()
 
-    def plot_current_temperature(self, results: pd.DataFrame = None) -> None:
+    def plot_current_temperature(self, results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -185,13 +185,15 @@ class Simulation:
         y_vec_min, y_vec_max = self.model.get_voltage_constraints(x_vec)
 
         # Color gradient for COP
-        COP_sim = np.abs(results["COP"].to_numpy())
+        COP_sim = results["COP"].to_numpy()
+        mask = y_sim < 0 # get negative current values
+        COP = COP_sim.copy() - mask # correct for negative values by substracting 1
         cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
         norm = Normalize(vmin=0, vmax=5)
         points = np.array([x_sim, y_sim]).T.reshape(-1, 1, 2)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
         lc = LineCollection(segments, cmap=cmap, norm=norm)
-        lc.set_array(COP_sim)
+        lc.set_array(COP)
         lc.set_linewidth(2)
 
         # Plot
@@ -204,7 +206,7 @@ class Simulation:
             plt.arrow(
                 x_sim[i], y_sim[i], 
                 x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i], 
-                head_width=0.15, head_length=1.5, fc=cmap(norm(COP_sim[i])), ec=cmap(norm(COP_sim[i])), alpha=0.2
+                head_width=0.5, head_length=3, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
             )
 
         plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
@@ -223,4 +225,37 @@ class Simulation:
         plt.legend()
         plt.grid()
         plt.colorbar(lc, label='COP')
+        plt.show()
+
+    def plot_HP_operation(self, results:pd.DataFrame=None) -> None:
+        if results is None:
+            if self.data_df is None:
+                raise ValueError("No data to plot")
+            results = self.data_df
+
+        # Conversion
+        results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
+
+        # Plot
+        fig, axs = plt.subplots(1, 1, figsize=(15, 4))
+
+        # U_HP vs DeltaT
+        results.plot(
+            x="T_h",
+            y="U_HP",
+            xlabel="T_h [°C]",
+            ylabel="U_HP [V]",
+            title="U_HP vs T_h",
+            ax=axs,
+            color="orange"
+        )
+        plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
+        plt.plot(x_vec, y_vec_max, color='black', linestyle=':')
+        plt.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
+        plt.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
+        plt.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
+        plt.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
+        
+        plt.xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
+        axs.grid()
         plt.show()
