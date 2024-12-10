@@ -93,11 +93,11 @@ class Simulation:
 
         xlimits = (0, self.time_span)
 
-        fig, axs = plt.subplots(2, 2, figsize=(15, 4))
+        fig, axs = plt.subplots(2, 3, figsize=(15, 4))
 
-        # Temperatures (first row spanning both columns)
-        axs[0, 0].remove()  # Remove the first subplot
-        axs[0, 1].remove()  # Remove the second subplot
+        # Temperatures (first row spanning all columns)
+        for ax in axs[0]:  # Remove all subplots in the first row
+            ax.remove()
         ax_temp = fig.add_subplot(2, 1, 1)  # Create a new subplot spanning the top row
         ax_temp.axhline(y=0, lw=1, color="black", label='_nolegend_')
         ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
@@ -120,9 +120,9 @@ class Simulation:
         ax_temp.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax_temp.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax_temp.tick_params(axis='x', which='minor', direction='in', top=True)
-        ax_temp.tick_params(axis='y', which='minor', direction='in', left=True)
+        ax_temp.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         ax_temp.tick_params(axis='x', which='major', top=True)
-        ax_temp.tick_params(axis='y', which='major', left=True)
+        ax_temp.tick_params(axis='y', which='major', left=True, right=True)
 
         # SoC and x_FAN (second row, first column)
         axs[1, 0].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -144,14 +144,12 @@ class Simulation:
         axs[1, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 0].tick_params(axis='x', which='minor', direction='in', top=True)
-        axs[1, 0].tick_params(axis='y', which='minor', direction='in', left=True)
+        axs[1, 0].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 0].tick_params(axis='x', which='major', top=True)
-        axs[1, 0].tick_params(axis='y', which='major', left=True)
+        axs[1, 0].tick_params(axis='y', which='major', left=True, right=True)
 
-        # Currents and Voltages (second row, second column, dual y-axis)
+        # Currents (second row, second column)
         ax_curr = axs[1, 1]
-        ax_volt = ax_curr.twinx()
-
         ax_curr.axhline(y=0, lw=1, color="black", label='_nolegend_')
         ax_curr.axvline(x=0, lw=1, color="black", label='_nolegend_')
         results.plot(
@@ -159,36 +157,47 @@ class Simulation:
             y=["I_BT", "I_HP"],
             xlabel="Time [s]",
             ylabel="Current [A]",
-            title="Currents and Voltages",
+            title="Currents",
             ax=ax_curr,
-            legend=False,
             color=["green", "orange"]
         )
+        ax_curr.grid()
+        ax_curr.set_xlim(xlimits)
+        ax_curr.set_ylim(-3.1, 3.1)
+
+        # Add minor ticks
+        ax_curr.xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_curr.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        ax_curr.tick_params(axis='x', which='minor', direction='in', top=True)
+        ax_curr.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
+        ax_curr.tick_params(axis='x', which='major', top=True)
+        ax_curr.tick_params(axis='y', which='major', left=True, right=True)
+
+        # Voltages (second row, third column)
+        ax_volt = axs[1, 2]
+        ax_volt.axhline(y=0, lw=1, color="black", label='_nolegend_')
+        ax_volt.axvline(x=0, lw=1, color="black", label='_nolegend_')
         results.plot(
             x="time",
             y=["U_BT", "U_HP"],
             xlabel="Time [s]",
             ylabel="Voltage [V]",
+            title="Voltages",
             ax=ax_volt,
-            legend=False,
             color=["green", "orange"],
             style="--"
         )
-        ax_curr.legend(["I_BT", "I_HP"], loc="center left")
-        ax_volt.legend(["U_BT", "U_HP"], loc="center right")
-        ax_curr.grid()
-        ax_curr.set_xlim(xlimits)
+        ax_volt.grid()
+        ax_volt.set_xlim(xlimits)
+        ax_volt.set_ylim(-5.3, 5.3)
 
-        # Add minor ticks to both y-axes
-        ax_curr.xaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax_curr.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        # Add minor ticks
+        ax_volt.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax_volt.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax_curr.tick_params(axis='x', which='minor', direction='in', top=True)
-        ax_curr.tick_params(axis='y', which='minor', direction='in', left=True)
-        ax_volt.tick_params(axis='y', which='minor', direction='in', right=True)
-        ax_curr.tick_params(axis='x', which='major', top=True)
-        ax_curr.tick_params(axis='y', which='major', left=True)
-        ax_volt.tick_params(axis='y', which='major', right=True)
+        ax_volt.tick_params(axis='x', which='minor', direction='in', top=True)
+        ax_volt.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
+        ax_volt.tick_params(axis='x', which='major', top=True)
+        ax_volt.tick_params(axis='y', which='major', left=True, right=True)
 
         # Adjust layout
         plt.tight_layout()
