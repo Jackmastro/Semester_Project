@@ -58,6 +58,7 @@ class Model:
             'R_floor':      self.R_floor_lambda,
             'R4_lambda':    self.R_4_lambda,
             'R5':           self.R_5,
+            'Q_rest':       self.Q_rest,
         }
 
         # Operational point initialization
@@ -101,6 +102,7 @@ class Model:
         # Top Al thermal parameters
         self.m_2 = 0.0638 # kg
         self.m_4 = 0.0642 # kg
+        self.Q_rest = self.P_el_rest # W # TODO only valid when battery attached. Case when attached via cable
 
         # Bottom Al thermal parameters - Heat sink
         self.m_1 = 0.0876 # kg
@@ -172,7 +174,7 @@ class Model:
         m_c = sp.symbols('m_c')
 
         # Bottom Al thermal parameters - Heat sink
-        m_h, R_floor_lambda = sp.symbols('m_h, R_floor')
+        m_h, R_floor_lambda, Q_rest = sp.symbols('m_h, R_floor, Q_rest')
         R_eq = (R_floor_lambda * R_air_alpha) / (R_floor_lambda + R_air_alpha) # K/W
         # display(Markdown(r"$R_{eq}(x_{FAN}=1):$"), R_eq.subs(self.params_values).subs({x_FAN: 1.0}))
         # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq.subs(self.params_values).subs({x_FAN: 0.0}))
@@ -196,14 +198,14 @@ class Model:
 
         # HP calculation
         P_HP = U_HP * I_HP # W
-        COP = 1 + Q_c / P_HP
+        COP = 1 + Q_c / P_HP # only valid for positive I_HP (cooling)
 
         # LED calculation
         P_LED = I_LED * U_BT * x_LED # W
         Q_LED = P_LED - P_r # W
 
         # Nonlinear ODEs
-        dTh_dt = (1 / (m_h * cp_Al)) * (Q_c + P_HP - (T_h - T_amb) / R_eq)
+        dTh_dt = (1 / (m_h * cp_Al)) * (Q_c + P_HP - (T_h - T_amb) / R_eq + Q_rest)
         dTc_dt = (1 / (m_c * cp_Al)) * (Q_LED - Q_LEDcell - Q_c)
         dxSoC_dt = - I_BT / (n * Q_max)
 

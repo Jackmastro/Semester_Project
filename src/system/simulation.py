@@ -98,8 +98,8 @@ class Simulation:
         axs[0, 0].remove()  # Remove the first subplot
         axs[0, 1].remove()  # Remove the second subplot
         ax_temp = fig.add_subplot(2, 1, 1)  # Create a new subplot spanning the top row
-        ax_temp.axhline(y=0, lw=1, color='k', label='_nolegend_')
-        ax_temp.axvline(x=0, lw=1, color='k', label='_nolegend_')
+        ax_temp.axhline(y=0, lw=1, color="black", label='_nolegend_')
+        ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
         results.plot(
             x="time",
             y=["T_cell", "T_c", "T_h"],
@@ -116,16 +116,16 @@ class Simulation:
         ax_temp.set_xlim(xlimits)
 
         # SoC and x_FAN (second row, first column)
-        axs[1, 0].axhline(y=0, lw=1, color='k', label='_nolegend_')
-        axs[1, 0].axvline(x=0, lw=1, color='k', label='_nolegend_')
+        axs[1, 0].axhline(y=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 0].axvline(x=0, lw=1, color="black", label='_nolegend_')
         results.plot(
             x="time",
             y=["SoC", "x_FAN"],
             xlabel="Time [s]",
             ylabel="Percentage [%]",
-            title="SoC and x_FAN",
+            title="SoC and FAN duty cycle",
             ax=axs[1, 0],
-            color=["green", "orange"]
+            color=["green", "purple"]
         )
         axs[1, 0].grid()
         axs[1, 0].set_xlim(xlimits)
@@ -134,30 +134,30 @@ class Simulation:
         ax_curr = axs[1, 1]
         ax_volt = ax_curr.twinx()
 
-        ax_curr.axhline(y=0, lw=1, color='k', label='_nolegend_')
-        ax_curr.axvline(x=0, lw=1, color='k', label='_nolegend_')
+        ax_curr.axhline(y=0, lw=1, color="black", label='_nolegend_')
+        ax_curr.axvline(x=0, lw=1, color="black", label='_nolegend_')
         results.plot(
             x="time",
-            y=["I_HP", "I_BT"],
+            y=["I_BT", "I_HP"],
             xlabel="Time [s]",
             ylabel="Current [A]",
             title="Currents and Voltages",
             ax=ax_curr,
             legend=False,
-            color=["orange", "green"]
+            color=["green", "orange"]
         )
         results.plot(
             x="time",
-            y=["U_oc", "U_BT", "U_HP"],
+            y=["U_BT", "U_HP"],
             xlabel="Time [s]",
             ylabel="Voltage [V]",
             ax=ax_volt,
             legend=False,
-            color=["lightgreen", "green", "orange"],
-            style="--"
+            color=["green", "orange"],
+            style="-."
         )
-        ax_curr.legend(["I_HP", "I_BT"], loc="lower left")
-        ax_volt.legend(["U_oc", "U_BT", "U_HP"], loc="lower right")
+        ax_curr.legend(["I_BT", "I_HP"], loc="center left")
+        ax_volt.legend(["U_BT", "U_HP"], loc="center right")
         ax_curr.grid()
         ax_curr.set_xlim(xlimits)
 
