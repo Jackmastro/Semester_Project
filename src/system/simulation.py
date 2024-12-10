@@ -81,7 +81,7 @@ class Simulation:
 
         return self.data_df
     
-    def plot_time_results(self, results:pd.DataFrame=None) -> None:
+    def plot_time_results(self, title:str="", results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -105,7 +105,7 @@ class Simulation:
             y=["T_cell", "T_c", "T_h"],
             xlabel="Time [s]",
             ylabel="Temperature [°C]",
-            title="Temperatures",
+            title="Temperatures " + title,
             ax=ax_temp,
             color=["lightblue", "blue", "red"]
         )
@@ -165,7 +165,7 @@ class Simulation:
         plt.tight_layout()
         plt.show()
 
-    def plot_current_temperature(self, results:pd.DataFrame=None) -> None:
+    def plot_current_temperature(self, title:str="", results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -206,7 +206,7 @@ class Simulation:
             plt.arrow(
                 x_sim[i], y_sim[i], 
                 x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i], 
-                head_width=0.5, head_length=3, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
+                head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
             )
 
         plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
@@ -221,7 +221,7 @@ class Simulation:
         plt.ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
         plt.xlabel(r'$\Delta T \; [\degree]$')
         plt.ylabel(r'$I_\mathrm{HP} \; [A]$')
-        plt.title('Current-Temperature Phase Space')
+        plt.title('Current-Temperature Phase Space ' + title)
         plt.legend()
         plt.grid()
         plt.colorbar(lc, label='COP')
