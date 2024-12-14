@@ -92,7 +92,7 @@ class Simulation:
 
         return self.data_df
     
-    def plot_time_results(self, title: str = "", results: pd.DataFrame = None) -> None:
+    def plot_time_results(self, title:str="", results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -113,15 +113,12 @@ class Simulation:
         ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
         ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
         ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
-        results.plot(
-            x="time",
-            y=["T_cell", "T_c", "T_h"],
-            xlabel="Time [s]",
-            ylabel="Temperature [°C]",
-            title="Temperatures " + title,
-            ax=ax_temp,
-            color=[self.colors["cell"], self.colors["cold"], self.colors["hot"]]
-        )
+        ax_temp.plot(results["time"], results["T_cell"], color=self.colors["cell"], label=r'$T_{cell}$')
+        ax_temp.plot(results["time"], results["T_c"], color=self.colors["cold"], label=r'$T_{c}$')
+        ax_temp.plot(results["time"], results["T_h"], color=self.colors["hot"], label=r'$T_{h}$')
+        ax_temp.set_xlabel('Time [s]')
+        ax_temp.set_ylabel('Temperature [°C]')
+        ax_temp.set_title(title)
         ax_temp.legend(loc="center right")
         ax_temp.grid()
         ax_temp.set_xlim(xlimits)
@@ -137,15 +134,11 @@ class Simulation:
         # SoC and x_FAN (second row, first column)
         axs[1, 0].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 0].axvline(x=0, lw=1, color="black", label='_nolegend_')
-        results.plot(
-            x="time",
-            y=["SoC", "x_FAN"],
-            xlabel="Time [s]",
-            ylabel="Percentage [%]",
-            title="SoC and FAN duty cycle",
-            ax=axs[1, 0],
-            color=[self.colors["battery"], self.colors["fan"]]
-        )
+        axs[1, 0].plot(results["time"], results["SoC"], color=self.colors["battery"], label=r'$x_{SoC}$')
+        axs[1, 0].plot(results["time"], results["x_FAN"], color=self.colors["fan"], label=r'$x_{FAN}$')
+        axs[1, 0].set_xlabel('Time [s]')
+        axs[1, 0].set_ylabel('Percentage [%]')
+        axs[1, 0].set_title("SoC and FAN duty cycle")
         axs[1, 0].grid()
         axs[1, 0].set_xlim(xlimits)
         axs[1, 0].set_ylim(-0.1, 1.1)
@@ -160,65 +153,51 @@ class Simulation:
         axs[1, 0].tick_params(axis='y', which='major', left=True, right=True)
 
         # Currents (second row, second column)
-        ax_curr = axs[1, 1]
-        ax_curr.axhline(y=0, lw=1, color="black", label='_nolegend_')
-        ax_curr.axvline(x=0, lw=1, color="black", label='_nolegend_')
-        ax_curr.axhline(y=self.model.I_LED * self.model.x_LED_tot, color=self.colors["led"], label='I_LED')
-        ax_curr.plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label='I_FAN')
-        results.plot(
-            x="time",
-            y=["I_BT", "I_HP"],
-            xlabel="Time [s]",
-            ylabel="Current [A]",
-            title="Currents",
-            ax=ax_curr,
-            color=[self.colors["battery"], self.colors["HP"]]
-        )
-        ax_curr.grid()
-        ax_curr.set_xlim(xlimits)
-        ax_curr.set_ylim(-5.1, 5.1)
-        ax_curr.legend(loc="center right")
-
-        # Add minor ticks
-        ax_curr.xaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax_curr.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax_curr.tick_params(axis='x', which='minor', direction='in', top=True)
-        ax_curr.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
-        ax_curr.tick_params(axis='x', which='major', top=True)
-        ax_curr.tick_params(axis='y', which='major', left=True, right=True)
+        axs[1, 1].axhline(y=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 1].axvline(x=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 1].axhline(y=self.model.I_LED * self.model.x_LED_tot, color=self.colors["led"], label=r'$I_{LED}$')
+        axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_{FAN}$')
+        axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_{BT}$')
+        axs[1, 1].plot(results["time"], results["I_HP"], color=self.colors["HP"], label=r'$I_{HP}$')
+        axs[1, 1].set_xlabel('Time [s]')
+        axs[1, 1].set_ylabel('Current [A]')
+        axs[1, 1].set_title("Currents")
+        axs[1, 1].grid()
+        axs[1, 1].set_xlim(xlimits)
+        axs[1, 1].set_ylim(-5.1, 5.1)
+        axs[1, 1].legend(loc="center right")
+        axs[1, 1].xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        axs[1, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        axs[1, 1].tick_params(axis='x', which='minor', direction='in', top=True)
+        axs[1, 1].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
+        axs[1, 1].tick_params(axis='x', which='major', top=True)
+        axs[1, 1].tick_params(axis='y', which='major', left=True, right=True)
 
         # Voltages (second row, third column)
-        ax_volt = axs[1, 2]
-        ax_volt.axhline(y=0, lw=1, color="black", label='_nolegend_')
-        ax_volt.axvline(x=0, lw=1, color="black", label='_nolegend_')
-        ax_volt.axhline(y=self.model.U_FAN, color=self.colors["fan"], label='U_FAN')
-        results.plot(
-            x="time",
-            y=["U_BT", "U_HP"],
-            xlabel="Time [s]",
-            ylabel="Voltage [V]",
-            title="Voltages",
-            ax=ax_volt,
-            color=[self.colors["battery"], self.colors["HP"]]
-        )
-        ax_volt.grid()
-        ax_volt.set_xlim(xlimits)
-        ax_volt.set_ylim(-4.3, 12.3)
-        ax_volt.legend(loc="center right")
-
-        # Add minor ticks
-        ax_volt.xaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax_volt.yaxis.set_minor_locator(ticker.AutoMinorLocator())
-        ax_volt.tick_params(axis='x', which='minor', direction='in', top=True)
-        ax_volt.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
-        ax_volt.tick_params(axis='x', which='major', top=True)
-        ax_volt.tick_params(axis='y', which='major', left=True, right=True)
+        axs[1, 2].axhline(y=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 2].axvline(x=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 2].axhline(y=self.model.U_FAN, color=self.colors["fan"], label=r'$U_{FAN}$')
+        axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["battery"], label=r'$U_{BT}$')
+        axs[1, 2].plot(results["time"], results["U_HP"], color=self.colors["HP"], label=r'$U_{HP}$')
+        axs[1, 2].set_xlabel('Time [s]')
+        axs[1, 2].set_ylabel('Voltage [V]')
+        axs[1, 2].set_title("Voltages")
+        axs[1, 2].grid()
+        axs[1, 2].set_xlim(xlimits)
+        axs[1, 2].set_ylim(-4.3, 12.3)
+        axs[1, 2].legend(loc="center right")
+        axs[1, 2].xaxis.set_minor_locator(ticker.AutoMinorLocator())
+        axs[1, 2].yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        axs[1, 2].tick_params(axis='x', which='minor', direction='in', top=True)
+        axs[1, 2].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
+        axs[1, 2].tick_params(axis='x', which='major', top=True)
+        axs[1, 2].tick_params(axis='y', which='major', left=True, right=True)
 
         # Adjust layout
         plt.tight_layout()
         plt.show()
 
-    def plot_current_temperature(self, title: str = "", results: pd.DataFrame = None) -> None:
+    def plot_current_temperature(self, title:str="", results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -273,7 +252,7 @@ class Simulation:
         # Configure plot
         ax.set_xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
         ax.set_ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
-        ax.set_xlabel(r'$\Delta T \; [\degree]$')
+        ax.set_xlabel(r'$\Delta T \; [°C]$')
         ax.set_ylabel(r'$I_\mathrm{HP} \; [A]$')
         ax.set_title('Current-Temperature Phase Space ' + title)
         ax.legend()
