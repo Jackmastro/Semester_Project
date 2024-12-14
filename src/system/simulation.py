@@ -41,6 +41,16 @@ class Simulation:
         }
         self.data_df:pd.DataFrame = pd.DataFrame()
 
+        self.colors = {
+            "battery": "green",
+            "HP": "orange",
+            "fan": "purple",
+            "cell": "lightblue",
+            "cold": "blue",
+            "hot": "red",
+            "led": "pink",
+        }
+
     def run(self) -> pd.DataFrame:
         x_prev = self.x0
 
@@ -101,6 +111,8 @@ class Simulation:
         ax_temp = fig.add_subplot(2, 1, 1)  # Create a new subplot spanning the top row
         ax_temp.axhline(y=0, lw=1, color="black", label='_nolegend_')
         ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
+        ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
+        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
         results.plot(
             x="time",
             y=["T_cell", "T_c", "T_h"],
@@ -108,10 +120,8 @@ class Simulation:
             ylabel="Temperature [°C]",
             title="Temperatures " + title,
             ax=ax_temp,
-            color=["lightblue", "blue", "red"]
+            color=[self.colors["cell"], self.colors["cold"], self.colors["hot"]]
         )
-        ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
-        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
         ax_temp.legend(loc="center right")
         ax_temp.grid()
         ax_temp.set_xlim(xlimits)
@@ -134,11 +144,12 @@ class Simulation:
             ylabel="Percentage [%]",
             title="SoC and FAN duty cycle",
             ax=axs[1, 0],
-            color=["green", "purple"]
+            color=[self.colors["battery"], self.colors["fan"]]
         )
         axs[1, 0].grid()
         axs[1, 0].set_xlim(xlimits)
         axs[1, 0].set_ylim(-0.1, 1.1)
+        axs[1, 0].legend(loc="center right")
 
         # Add minor ticks
         axs[1, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
@@ -152,6 +163,8 @@ class Simulation:
         ax_curr = axs[1, 1]
         ax_curr.axhline(y=0, lw=1, color="black", label='_nolegend_')
         ax_curr.axvline(x=0, lw=1, color="black", label='_nolegend_')
+        ax_curr.axhline(y=self.model.I_LED * self.model.x_LED_tot, color=self.colors["led"], label='I_LED')
+        ax_curr.plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label='I_FAN')
         results.plot(
             x="time",
             y=["I_BT", "I_HP"],
@@ -159,11 +172,12 @@ class Simulation:
             ylabel="Current [A]",
             title="Currents",
             ax=ax_curr,
-            color=["green", "orange"]
+            color=[self.colors["battery"], self.colors["HP"]]
         )
         ax_curr.grid()
         ax_curr.set_xlim(xlimits)
         ax_curr.set_ylim(-5.1, 5.1)
+        ax_curr.legend(loc="center right")
 
         # Add minor ticks
         ax_curr.xaxis.set_minor_locator(ticker.AutoMinorLocator())
@@ -177,6 +191,7 @@ class Simulation:
         ax_volt = axs[1, 2]
         ax_volt.axhline(y=0, lw=1, color="black", label='_nolegend_')
         ax_volt.axvline(x=0, lw=1, color="black", label='_nolegend_')
+        ax_volt.axhline(y=self.model.U_FAN, color=self.colors["fan"], label='U_FAN')
         results.plot(
             x="time",
             y=["U_BT", "U_HP"],
@@ -184,12 +199,12 @@ class Simulation:
             ylabel="Voltage [V]",
             title="Voltages",
             ax=ax_volt,
-            color=["green", "orange"],
-            style="--"
+            color=[self.colors["battery"], self.colors["HP"]]
         )
         ax_volt.grid()
         ax_volt.set_xlim(xlimits)
-        ax_volt.set_ylim(-4.3, 4.3)
+        ax_volt.set_ylim(-4.3, 12.3)
+        ax_volt.legend(loc="center right")
 
         # Add minor ticks
         ax_volt.xaxis.set_minor_locator(ticker.AutoMinorLocator())

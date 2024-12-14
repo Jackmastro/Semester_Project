@@ -45,7 +45,7 @@ class Model:
             'b_FAN':        self.FAN_coefs["b"].iloc[0],
             'k_FAN':        self.FAN_coefs["k"].iloc[0],
             'I_LED':        self.I_LED, # LED
-            'x_LED':        self.x_LED,
+            'x_LED':        self.x_LED_tot,
             'P_r':          self.P_LED_r,
             'S_M':          self.S_M, # HP
             'R_M':          self.R_M,
@@ -72,7 +72,7 @@ class Model:
         self.P_el_rest = 1.0 # W TODO get better value
         self.I_rest = 0.5 #
         self.n_BT = 2
-        self.Q_BT_max = 3.0 * 3600 # As (Ah = 3600 As)
+        self.Q_BT_max = 3.0 * 3600 # As (used conversion: Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
         self.BT_coefs = pd.read_csv(
             'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\battery\\battery_fitted_coefficients_3rd.csv'
@@ -87,7 +87,7 @@ class Model:
 
         # LED parameters
         self.I_LED = LEDparams.I_LED # A
-        self.x_LED = LEDparams.x_LED_tot # duty cycle
+        self.x_LED_tot = LEDparams.x_LED_tot # total duty cycle
         self.P_LED_r = LEDparams.P_r # W
 
         # Thermal parameters
@@ -186,11 +186,16 @@ class Model:
         T_cell = R5 * Q_LEDcell + T_amb # K
         # display(Markdown(r"$T_{cell}:$"), T_cell)
 
-        # Output: I_BT and BT calculation
-        # I_BT = U_oc + R_in * I_HP + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * I_HP + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * I_HP - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
-        # I_BT = U_oc + R_in*sp.sqrt(I_HP**2) + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc - 2*R_in*U_oc*sp.sqrt(I_HP**2) + R_in**2*I_HP**2 + 2*R_in*I_LED*x_LED*R_in*sp.sqrt(I_HP**2) - 4*R_in*I_FAN*U_FAN*x_FAN - 4*R_in*P_rest + (R_in*I_LED*x_LED)**2) # A
-        # I_BT = U_oc + R_in*sp.sign(I_HP)*I_HP + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc - 2*R_in*U_oc*sp.sign(I_HP)*I_HP + R_in**2*I_HP**2 + 2*R_in*I_LED*x_LED*R_in*sp.sign(I_HP)*I_HP - 4*R_in*I_FAN*U_FAN*x_FAN - 4*R_in*P_rest + (R_in*I_LED*x_LED)**2) # A
-        I_BT = I_FAN * x_FAN + sp.sqrt(I_HP**2) + I_LED * x_LED + I_rest # A
+        # FAN calculation
+        P_FAN = I_FAN * U_FAN * x_FAN # W
+
+        # HP calculation
+        P_HP = U_HP * I_HP # W
+        COP = 1 + Q_c / P_HP # only valid for positive I_HP (cooling)
+
+        # BT calculation
+        I_BT = (U_oc + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc + (R_in*I_LED*x_LED)**2 - 4*R_in*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_in) # A
+        # I_BT = I_FAN * x_FAN + sp.sqrt(I_HP**2) + I_LED * x_LED + I_rest # A
         U_BT = U_oc - R_in * I_BT # V
         P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
@@ -200,13 +205,6 @@ class Model:
         # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 1.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{min}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 0.0}))
-
-        # FAN calculation
-        P_FAN = I_FAN * U_FAN * x_FAN # W
-
-        # HP calculation
-        P_HP = U_HP * I_HP # W
-        COP = 1 + Q_c / P_HP # only valid for positive I_HP (cooling)
 
         # LED calculation
         P_LED = I_LED * U_BT * x_LED # W
