@@ -70,9 +70,10 @@ class Model:
         # Symbolic initialization
         self._init_sym_model()
 
-    def _init_params(self, LEDparams:LEDparams, T_amb0:float) -> None:
+    def _init_params(self, LEDparams:LEDparams, T_amb:float) -> None:
         self.P_el_rest = 1.0 # W TODO get better value
-        self.I_rest = 0.5 #
+        self.I_rest = 0.5 # A TODO get better value
+        self.U_rest = self.P_el_rest / self.I_rest # V
         self.n_BT = 2
         self.Q_BT_max = 3.0 * 3600 # As (used conversion: Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
@@ -89,7 +90,7 @@ class Model:
         self.P_LED_r = LEDparams.P_r # W
 
         # Thermal parameters
-        self.T_amb = T_amb0 # K
+        self.T_amb = T_amb # K
         self.cp_Al = 897.0 # J/kgK https://en.wikipedia.org/wiki/6061_aluminium_alloy
         self.cp_H2O = 4180.0 # J/kgK https://www.engineeringtoolbox.com/specific-heat-capacity-water-d_660.html
         # self.cp_air = 1006.0 # J/kgK https://www.engineeringtoolbox.com/air-specific-heat-capacity-d_705.html?vA=37&degree=C&pressure=1bar#

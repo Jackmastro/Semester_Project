@@ -49,6 +49,7 @@ class Simulation:
             "cold": "blue",
             "hot": "red",
             "led": "pink",
+            "rest": "gray",
         }
 
     def run(self) -> pd.DataFrame:
@@ -122,8 +123,6 @@ class Simulation:
         ax_temp.legend(loc="center right")
         ax_temp.grid()
         ax_temp.set_xlim(xlimits)
-
-        # Add minor ticks
         ax_temp.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax_temp.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax_temp.tick_params(axis='x', which='minor', direction='in', top=True)
@@ -143,8 +142,6 @@ class Simulation:
         axs[1, 0].set_xlim(xlimits)
         axs[1, 0].set_ylim(-0.1, 1.1)
         axs[1, 0].legend(loc="center right")
-
-        # Add minor ticks
         axs[1, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 0].tick_params(axis='x', which='minor', direction='in', top=True)
@@ -155,6 +152,7 @@ class Simulation:
         # Currents (second row, second column)
         axs[1, 1].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 1].axvline(x=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 1].axhline(y=self.model.I_rest, color=self.colors["rest"], label=r'$I_{rest}$')
         axs[1, 1].axhline(y=self.model.I_LED * self.model.x_LED_tot, color=self.colors["led"], label=r'$I_{LED}$')
         axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_{FAN}$')
         axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_{BT}$')
@@ -176,6 +174,7 @@ class Simulation:
         # Voltages (second row, third column)
         axs[1, 2].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 2].axvline(x=0, lw=1, color="black", label='_nolegend_')
+        axs[1, 2].axhline(y=self.model.U_rest, color=self.colors["rest"], label=r'$U_{rest}$')
         axs[1, 2].axhline(y=self.model.U_FAN, color=self.colors["fan"], label=r'$U_{FAN}$')
         axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["battery"], label=r'$U_{BT}$')
         axs[1, 2].plot(results["time"], results["U_HP"], color=self.colors["HP"], label=r'$U_{HP}$')
@@ -193,7 +192,6 @@ class Simulation:
         axs[1, 2].tick_params(axis='x', which='major', top=True)
         axs[1, 2].tick_params(axis='y', which='major', left=True, right=True)
 
-        # Adjust layout
         plt.tight_layout()
         plt.show()
 
@@ -254,25 +252,19 @@ class Simulation:
         ax.set_ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
         ax.set_xlabel(r'$\Delta T \; [°C]$')
         ax.set_ylabel(r'$I_\mathrm{HP} \; [A]$')
-        ax.set_title('Current-Temperature Phase Space ' + title)
+        ax.set_title(title)
         ax.legend()
         ax.grid()
-
-        # Add minor ticks
         ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax.tick_params(axis='x', which='minor', direction='in', top=True)
         ax.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         ax.tick_params(axis='x', which='major', top=True)
         ax.tick_params(axis='y', which='major', left=True, right=True)
-
-        # Add a box around all edges
         ax.spines['top'].set_visible(True)
         ax.spines['right'].set_visible(True)
         ax.spines['bottom'].set_visible(True)
         ax.spines['left'].set_visible(True)
-
-        # Display colorbar
-        cbar = plt.colorbar(lc, ax=ax, label='COP')
+        plt.colorbar(lc, ax=ax, label='COP')
         
         plt.show()
