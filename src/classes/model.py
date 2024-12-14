@@ -7,6 +7,8 @@ from scipy.signal import cont2discrete
 
 from classes.LED_params import LEDparams
 
+from data import load_coefficients
+
 class Model:
     def __init__(self, LEDparams:LEDparams, x0:np.ndarray, T_amb0:float=conv_temp(25.0, 'C', 'K')) -> None:
         """
@@ -74,16 +76,12 @@ class Model:
         self.n_BT = 2
         self.Q_BT_max = 3.0 * 3600 # As (used conversion: Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
-        self.BT_coefs = pd.read_csv(
-            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\battery\\battery_fitted_coefficients_3rd.csv'
-            )
+        self.BT_coefs = load_coefficients('battery\\battery_fitted_coefficients_3rd.csv')
 
         # Fan parameters
         self.I_FAN = 0.13 # A
         self.U_FAN = 12.0 # V
-        self.FAN_coefs = pd.read_csv(
-            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\fan\\fan_coefficients.csv'
-            )
+        self.FAN_coefs = load_coefficients('fan\\fan_coefficients.csv')
 
         # LED parameters
         self.I_LED = LEDparams.I_LED # A
@@ -111,9 +109,7 @@ class Model:
         self.R_floor_lambda = 2.6 # K/W # TODO estimated real time
 
         # Heat pump - peltier module
-        HP_params = pd.read_csv(
-            'C:\\Users\\giaco\\Git_Repositories\\Semester_Thesis_1\\data\\heat_pump\\HP_fitted_coefficients.csv'
-            )
+        HP_params = load_coefficients('heat_pump\\HP_fitted_coefficients.csv')
         self.R_M = HP_params["R_M"].iloc[0] # Ohm
         self.S_M = HP_params["S_M"].iloc[0] # V/K
         self.K_M = HP_params["K_M"].iloc[0] # W/K
