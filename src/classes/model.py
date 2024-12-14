@@ -98,7 +98,7 @@ class Model:
 
         # Top thermal parameters - Diffuser
         # TODO estimation of parameters
-        self.R_4_lambda = 0.5 # K/W
+        self.R_4_lambda = 5 # K/W
         self.R_5 = 25.0 # K/W
 
         # Top Al thermal parameters
@@ -186,11 +186,13 @@ class Model:
         T_cell = R5 * Q_LEDcell + T_amb # K
         # display(Markdown(r"$T_{cell}:$"), T_cell)
 
-        # Output: I_BT
+        # Output: I_BT and BT calculation
         # I_BT = U_oc + R_in * I_HP + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * I_HP + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * I_HP - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
-        # I_BT = U_oc + R_in * sp.sqrt(I_HP**2) + R_in * I_LED * x_LED - sp.sqrt(U_oc**2 - 2 * R_in * I_LED * x_LED * U_oc - 2 * R_in * U_oc * sp.sqrt(I_HP**2) + R_in**2 * I_HP**2 + 2 * R_in * I_LED * x_LED * R_in * sp.sqrt(I_HP**2) - 4 * R_in * I_FAN * U_FAN * x_FAN - 4 * R_in * P_rest + (R_in * I_LED * x_LED)**2) # A
+        # I_BT = U_oc + R_in*sp.sqrt(I_HP**2) + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc - 2*R_in*U_oc*sp.sqrt(I_HP**2) + R_in**2*I_HP**2 + 2*R_in*I_LED*x_LED*R_in*sp.sqrt(I_HP**2) - 4*R_in*I_FAN*U_FAN*x_FAN - 4*R_in*P_rest + (R_in*I_LED*x_LED)**2) # A
+        # I_BT = U_oc + R_in*sp.sign(I_HP)*I_HP + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc - 2*R_in*U_oc*sp.sign(I_HP)*I_HP + R_in**2*I_HP**2 + 2*R_in*I_LED*x_LED*R_in*sp.sign(I_HP)*I_HP - 4*R_in*I_FAN*U_FAN*x_FAN - 4*R_in*P_rest + (R_in*I_LED*x_LED)**2) # A
         I_BT = I_FAN * x_FAN + sp.sqrt(I_HP**2) + I_LED * x_LED + I_rest # A
         U_BT = U_oc - R_in * I_BT # V
+        P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
         # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 1.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 0.0, x_SoC: 1.0}))
@@ -198,6 +200,9 @@ class Model:
         # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 1.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{min}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 0.0}))
+
+        # FAN calculation
+        P_FAN = I_FAN * U_FAN * x_FAN # W
 
         # HP calculation
         P_HP = U_HP * I_HP # W

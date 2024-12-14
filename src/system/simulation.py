@@ -163,7 +163,7 @@ class Simulation:
         )
         ax_curr.grid()
         ax_curr.set_xlim(xlimits)
-        ax_curr.set_ylim(-3.1, 3.1)
+        ax_curr.set_ylim(-5.1, 5.1)
 
         # Add minor ticks
         ax_curr.xaxis.set_minor_locator(ticker.AutoMinorLocator())
@@ -281,37 +281,4 @@ class Simulation:
         # Display colorbar
         cbar = plt.colorbar(lc, ax=ax, label='COP')
         
-        plt.show()
-
-    def plot_HP_operation(self, results:pd.DataFrame=None) -> None:
-        if results is None:
-            if self.data_df is None:
-                raise ValueError("No data to plot")
-            results = self.data_df
-
-        # Conversion
-        results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
-
-        # Plot
-        fig, axs = plt.subplots(1, 1, figsize=(15, 4))
-
-        # U_HP vs DeltaT
-        results.plot(
-            x="T_h",
-            y="U_HP",
-            xlabel="T_h [°C]",
-            ylabel="U_HP [V]",
-            title="U_HP vs T_h",
-            ax=axs,
-            color="orange"
-        )
-        plt.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
-        plt.plot(x_vec, y_vec_max, color='black', linestyle=':')
-        plt.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
-        plt.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
-        plt.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
-        plt.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
-        
-        plt.xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
-        axs.grid()
         plt.show()
