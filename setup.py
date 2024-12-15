@@ -8,4 +8,5 @@ setup(
     package_dir={'': 'src'},
     author_email='giacomma@student.ethz.ch',
     description='Semester project on DIYA',
+    year=2024,
 )
