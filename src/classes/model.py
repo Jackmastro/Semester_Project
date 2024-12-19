@@ -42,6 +42,8 @@ class Model:
             'a0':           self.BT_coefs["a0"].iloc[0],
             'U_FAN':        self.U_FAN, # Fan
             'I_FAN':        self.I_FAN,
+            'q_FAN':        self.FAN_lin_coefs["q"].iloc[0],
+            'm_FAN':        self.FAN_lin_coefs["m"].iloc[0],
             'y_FAN':        self.FAN_coefs["y_min"].iloc[0],
             'a_FAN':        self.FAN_coefs["a"].iloc[0],
             'b_FAN':        self.FAN_coefs["b"].iloc[0],
@@ -83,6 +85,7 @@ class Model:
         self.I_FAN = 0.13 # A
         self.U_FAN = 12.0 # V
         self.FAN_coefs = load_coefficients('fan\\fan_coefficients.csv')
+        self.FAN_lin_coefs = load_coefficients('fan\\fan_linear_coefficients.csv')
 
         # LED parameters
         self.I_LED = LEDparams.I_LED # A
@@ -141,15 +144,17 @@ class Model:
         self.sym_u  = sp.Matrix([I_HP, x_FAN])
 
         # Battery parameters
-        n, Q_max, R_in, P_rest, I_rest = sp.symbols('n_BT, Q_max, R_in, P_rest, I_rest')
+        n, Q_max, R_in, P_rest = sp.symbols('n_BT, Q_max, R_in, P_rest')
         a3, a2, a1, a0 = sp.symbols('a3, a2, a1, a0')
         U_oc = a3 * x_SoC**3 + a2 * x_SoC**2 + a1 * x_SoC + a0 # V
         # display(Markdown(r"$U_{oc}(x_{SoC}):$"), U_oc.subs(self.params_values))
 
         # Fan parameters
         U_FAN, I_FAN = sp.symbols('U_FAN, I_FAN')
-        y_min, a, b, k = sp.symbols('y_FAN, a_FAN, b_FAN, k_FAN')
-        R_air_alpha = y_min + (1 / (x_FAN + a) + b - y_min) / (1 + sp.exp(-k * x_FAN)) # K/W
+        q, m = sp.symbols('q_FAN, m_FAN')
+        R_air_alpha = q + m * x_FAN # K/W
+        # y_min, a, b, k = sp.symbols('y_FAN, a_FAN, b_FAN, k_FAN')
+        # R_air_alpha = y_min + (1 / (x_FAN + a) + b - y_min) / (1 + sp.exp(-k * x_FAN)) # K/W
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}):$"), R_air_alpha)
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=1):$"), R_air_alpha.subs(self.params_values).subs({x_FAN: 1.0}))
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=0):$"), R_air_alpha.subs(self.params_values).subs({x_FAN: 0.0}))

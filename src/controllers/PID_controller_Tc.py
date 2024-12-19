@@ -4,10 +4,10 @@ from simple_pid import PID
 import numpy as np
 
 class PIDController_Tc(ControllerBase):
-    def __init__(self, kp:float, ki:float, kd:float, setpoint:float, dt:float, output_limits:tuple) -> None:
-        self.setpoint = setpoint
+    def __init__(self, kp:float, ki:float, kd:float, setpoint_T_c:float, dt:float, output_limits:tuple) -> None:
+        self.setpoint = setpoint_T_c
         
-        self.pid = PID(Kp=kp, Ki=ki, Kd=kd, setpoint=setpoint, sample_time=dt, output_limits=output_limits)
+        self.pid = PID(Kp=kp, Ki=ki, Kd=kd, setpoint=setpoint_T_c, sample_time=dt, output_limits=output_limits)
 
     def get_control_input(self, x:np.ndarray, y:np.ndarray) -> np.ndarray:
         u_HP = self.pid(x[1])

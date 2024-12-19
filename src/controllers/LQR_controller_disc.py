@@ -5,14 +5,14 @@ from classes import Model
 
 class LQRController_disc(ControllerBase):
     """ Infinite horizon LQR controller """
-    def __init__(self, model:Model, setpoint:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
-        self.setpoint = setpoint
+    def __init__(self, model:Model, setpoint_T_cell:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
+        self.setpoint = setpoint_T_cell
         
         # Calculate offset for converting Tc to T_cell
         R_frac = (model.R_4_lambda + model.R_5) / model.R_5
-        self.Tc_inf = (setpoint - model.T_amb) * R_frac + model.T_amb
+        self.Tc_inf = (setpoint_T_cell - model.T_amb) * R_frac + model.T_amb
 
-        self.x_bar = np.array([0, self.Tc_inf, 0])
+        self.x_bar = np.array([1, self.Tc_inf, model.T_amb])
 
         # Solve Riccati equation
         self.P = solve_discrete_are(A, B, Q, R)
