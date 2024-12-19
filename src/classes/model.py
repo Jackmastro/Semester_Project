@@ -80,6 +80,8 @@ class Model:
         self.Q_BT_max = 3.0 * 3600 # As (used conversion: Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
         self.BT_coefs = load_coefficients('battery\\battery_fitted_coefficients_3rd.csv')
+        self.I_BT_max = 15 # A
+        self.I_BT_min = -3 # A
 
         # Fan parameters
         self.I_FAN = 0.13 # A
@@ -197,7 +199,6 @@ class Model:
 
         # BT calculation
         I_BT = (U_oc + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc + (R_in*I_LED*x_LED)**2 - 4*R_in*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_in) # A
-        # I_BT = I_FAN * x_FAN + sp.sqrt(I_HP**2) + I_LED * x_LED + I_rest # A
         U_BT = U_oc - R_in * I_BT # V
         P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
@@ -314,18 +315,22 @@ class Model:
             'T_cell':   self.T_cell_num(x, u),
         }
     
-    def get_voltage_constraints(self, delta_T:np.ndarray) -> np.ndarray:
+    def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:
         # Zero order approximation for U_BT
         U_BT = self.U_BT_num(self.x_op, self.u_op) # TODO use max and min values
         I_HP_max_I_source = (U_BT - self.S_M * delta_T) / self.R_M
         I_HP_min_I_source = (- U_BT - self.S_M * delta_T) / self.R_M
         return I_HP_min_I_source, I_HP_max_I_source
     
+    def get_constraints_I_BT2I_HP(self, x_FAN:np.ndarray) -> np.ndarray:
+        # TODO implement
+        pass
+    
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         u_bounded = np.copy(u)
 
         # HP current bounds
-        I_HP_min_I_source, I_HP_max_I_source = self.get_voltage_constraints(x[2] - x[1])
+        I_HP_min_I_source, I_HP_max_I_source = self.get_constraints_U_BT2I_HP(x[2] - x[1])
         u_bounded[0] = np.clip(u_bounded[0], I_HP_min_I_source, I_HP_max_I_source)
         u_bounded[0] = np.clip(u_bounded[0], -self.I_HP_max, self.I_HP_max)
 

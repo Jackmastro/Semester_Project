@@ -157,6 +157,10 @@ class Simulation:
         axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_{FAN}$')
         axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_{BT}$')
         axs[1, 1].plot(results["time"], results["I_HP"], color=self.colors["HP"], label=r'$I_{HP}$')
+        axs[1, 1].plot(results["time"], np.abs(results["I_HP"]) + 
+                        results["x_FAN"] * self.model.I_FAN +
+                        self.model.I_LED * self.model.x_LED_tot +
+                        self.model.I_rest, color='black', linestyle='--', label=r'$I_{tot}$')
         axs[1, 1].set_xlabel('Time [s]')
         axs[1, 1].set_ylabel('Current [A]')
         axs[1, 1].set_title("Currents")
@@ -175,7 +179,8 @@ class Simulation:
         axs[1, 2].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 2].axvline(x=0, lw=1, color="black", label='_nolegend_')
         axs[1, 2].axhline(y=self.model.U_rest, color=self.colors["rest"], label=r'$U_{rest}$')
-        axs[1, 2].axhline(y=self.model.U_FAN, color=self.colors["fan"], label=r'$U_{FAN}$')
+        axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["led"], label=r'$U_{LED}$')
+        axs[1, 2].plot(results["time"], results["x_FAN"] * self.model.U_FAN, color=self.colors["fan"], label=r'$U_{FAN}$')
         axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["battery"], label=r'$U_{BT}$')
         axs[1, 2].plot(results["time"], results["U_HP"], color=self.colors["HP"], label=r'$U_{HP}$')
         axs[1, 2].set_xlabel('Time [s]')
@@ -212,7 +217,7 @@ class Simulation:
 
         # Voltage constraints
         x_vec = np.linspace(-100, 100, self.time_steps)
-        y_vec_min, y_vec_max = self.model.get_voltage_constraints(x_vec)
+        y_vec_min, y_vec_max = self.model.get_constraints_U_BT2I_HP(x_vec)
 
         # Color gradient for COP
         COP_sim = results["COP"].to_numpy()
