@@ -35,7 +35,7 @@ class Model:
             'n_BT':         self.n_BT, # Battery
             'Q_max':        self.Q_BT_max,
             'R_in':         self.R_BT_int,
-            'P_rest':       self.P_el_rest,
+            'P_rest':       self.P_rest,
             'a3':           self.BT_coefs["a3"].iloc[0],
             'a2':           self.BT_coefs["a2"].iloc[0],
             'a1':           self.BT_coefs["a1"].iloc[0],
@@ -73,9 +73,9 @@ class Model:
         self._init_sym_model()
 
     def _init_params(self, LEDparams:LEDparams, T_amb:float) -> None:
-        self.P_el_rest = 1.0 # W TODO get better value
+        self.P_rest = 1.0 # W TODO get better value
         self.I_rest = 0.5 # A TODO get better value
-        self.U_rest = self.P_el_rest / self.I_rest # V
+        self.U_rest = self.P_rest / self.I_rest # V
         self.n_BT = 2
         self.Q_BT_max = 3.0 * 3600 # As (used conversion: Ah = 3600 As)
         self.R_BT_int = 0.1 # Ohm
@@ -108,7 +108,7 @@ class Model:
         # Top Al thermal parameters
         self.m_2 = 0.0638 # kg
         self.m_4 = 0.0642 # kg
-        self.Q_rest = self.P_el_rest # W # TODO only valid when battery attached. Case when attached via cable
+        self.Q_rest = self.P_rest # W # TODO only valid when battery attached. Case when attached via cable
 
         # Bottom Al thermal parameters - Heat sink
         self.m_1 = 0.0876 # kg
