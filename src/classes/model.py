@@ -44,10 +44,10 @@ class Model:
             'I_FAN':        self.I_FAN,
             'q_FAN':        self.FAN_lin_coefs["q"].iloc[0],
             'm_FAN':        self.FAN_lin_coefs["m"].iloc[0],
-            'y_FAN':        self.FAN_coefs["y_min"].iloc[0],
             'a_FAN':        self.FAN_coefs["a"].iloc[0],
             'b_FAN':        self.FAN_coefs["b"].iloc[0],
-            'k_FAN':        self.FAN_coefs["k"].iloc[0],
+            'c_FAN':        self.FAN_coefs["c"].iloc[0],
+            'd_FAN':        self.FAN_coefs["d"].iloc[0],
             'I_LED':        self.I_LED, # LED
             'x_LED':        self.x_LED_tot,
             'P_r':          self.P_LED_r,
@@ -73,6 +73,7 @@ class Model:
         self._init_sym_model()
 
     def _init_params(self, LEDparams:LEDparams, T_amb:float) -> None:
+        # Battery parameters
         self.P_rest = 1.0 # W TODO get better value
         self.I_rest = 0.5 # A TODO get better value
         self.U_rest = self.P_rest / self.I_rest # V
@@ -155,8 +156,8 @@ class Model:
         U_FAN, I_FAN = sp.symbols('U_FAN, I_FAN')
         q, m = sp.symbols('q_FAN, m_FAN')
         R_air_alpha = q + m * x_FAN # K/W
-        # y_min, a, b, k = sp.symbols('y_FAN, a_FAN, b_FAN, k_FAN')
-        # R_air_alpha = y_min + (1 / (x_FAN + a) + b - y_min) / (1 + sp.exp(-k * x_FAN)) # K/W
+        # a, b, c, d = sp.symbols('a_FAN, b_FAN, c_FAN, d_FAN')
+        # R_air_alpha = c + (1 / (x_FAN + a) + b - c) / (1 + sp.exp(-d * x_FAN)) # K/W
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}):$"), R_air_alpha)
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=1):$"), R_air_alpha.subs(self.params_values).subs({x_FAN: 1.0}))
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=0):$"), R_air_alpha.subs(self.params_values).subs({x_FAN: 0.0}))
@@ -186,10 +187,6 @@ class Model:
         # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq.subs(self.params_values).subs({x_FAN: 0.0}))
 
         ### Calculations
-        # Output: T_cell
-        T_cell = R5 * Q_LEDcell + T_amb # K
-        # display(Markdown(r"$T_{cell}:$"), T_cell)
-
         # FAN calculation
         P_FAN = I_FAN * U_FAN * x_FAN # W
 
@@ -212,6 +209,10 @@ class Model:
         # LED calculation
         P_LED = I_LED * U_BT * x_LED # W
         Q_LED = P_LED - P_r # W
+
+        # Output: T_cell
+        T_cell = R5 * Q_LEDcell + T_amb # K
+        # display(Markdown(r"$T_{cell}:$"), T_cell)
 
         # Nonlinear ODEs
         dTh_dt = (1 / (m_h * cp_Al)) * (Q_c + P_HP - (T_h - T_amb) / R_eq + Q_rest)
