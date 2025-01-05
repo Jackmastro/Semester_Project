@@ -146,13 +146,14 @@ class Model:
         I_HP, x_FAN = sp.symbols('I_HP, x_FAN')
         self.sym_u  = sp.Matrix([I_HP, x_FAN])
 
-        # Exogenuos input
+        # Exogenous input
         T_amb = sp.symbols('T_amb')
 
         ### Parameters
         # Peltier module - heat pump
         S_M, R_M, K_M = sp.symbols('S_M, R_M, K_M')
         U_HP = S_M * (T_h - T_c) + R_M * I_HP # V
+        # T_m = (T_h + T_c) / 2 # K
         Q_c = S_M * I_HP * T_c - 0.5 * R_M * I_HP**2 - K_M * (T_h - T_c) # W
 
         # FAN
@@ -275,10 +276,12 @@ class Model:
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32)
     
     def get_discrete_linearization(self, Ts:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
-        A, B, h, C, D, l = self.get_continuous_linearization(xss, uss)
+        A, B, _, C, D, _ = self.get_continuous_linearization(xss, uss)
         A_d, B_d, C_d, D_d, _ = cont2discrete((A, B, C, D), dt=Ts, method='zoh')
+        h_d = self.f_num(xss, uss).reshape(-1,) - A_d @ xss - B_d @ uss
+        l_d = self.g_num(xss, uss).reshape(-1,) - C_d @ xss - D_d @ uss
         
-        return A_d, B_d, h, C_d, D_d, l
+        return A_d, B_d, h_d, C_d, D_d, l_d
     
     def dynamics_f(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         return np.array(self.f_num(x, u)).flatten()
