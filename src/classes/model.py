@@ -204,7 +204,7 @@ class Model:
 
         # Peltier module - heat pump
         P_HP = U_HP * I_HP # W
-        COP_cooling = sp.sqrt(Q_c**2) / sp.sqrt(P_HP**2)
+        COP_cooling = sp.sqrt(Q_c**2) / sp.sqrt(P_HP**2) # Condition for P_HP close to zero in get_values
 
         # Battery
         I_BT = (U_oc + R_BT*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_BT*I_LED*x_LED*U_oc + (R_BT*I_LED*x_LED)**2 - 4*R_BT*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_BT) # A
@@ -259,6 +259,9 @@ class Model:
         self.COP_cooling_num = sp.lambdify((self.sym_x, self.sym_u), COP_cooling.subs(self.params_values), modules="numpy")
         self.I_BT_num        = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
         self.T_cell_num      = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
+
+        # Needed to check condition on COP
+        self.P_HP_num = sp.lambdify((self.sym_x, self.sym_u), P_HP.subs(self.params_values), modules="numpy")
 
     def get_continuous_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
@@ -320,11 +323,18 @@ class Model:
         return self.observer_g(self.x_prev, self.u)
     
     def get_values(self, x:np.ndarray, u:np.ndarray) -> dict:
+        # Condition for COP_cooling with P_HP close to zero
+        tol = 1e-4
+        if abs(self.P_HP_num(x, u)) < tol:
+            cop_cooling = np.nan
+        else:
+            cop_cooling = self.COP_cooling_num(x, u)
+
         return {
             'U_BT':        self.U_BT_num(x, u),
             'U_oc':        self.U_oc_num(x, u),
             'U_HP':        self.U_HP_num(x, u),
-            'COP_cooling': self.COP_cooling_num(x, u),
+            'COP_cooling': cop_cooling,
             'I_BT':        self.I_BT_num(x, u),
             'T_cell':      self.T_cell_num(x, u),
         }

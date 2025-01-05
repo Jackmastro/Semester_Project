@@ -23,6 +23,9 @@ class Simulation:
         self.time_span = time_span
         self.time_steps = int(self.time_span / self.dt)
 
+        # Placeholder for plots
+        self.initial_time_span = 0
+
         self.x0 = self.model.get_initial_state
 
         self.data = {
@@ -52,8 +55,42 @@ class Simulation:
             "rest": "gray",
         }
 
-    def run(self) -> pd.DataFrame:
+    def _append_sim_data(self, current_time:float, x_next:np.ndarray, u_bounded:np.ndarray, values:dict) -> None:
+        self.data["time"].append(current_time)
+        self.data["SoC"].append(x_next[0])
+        self.data["T_c"].append(x_next[1])
+        self.data["T_h"].append(x_next[2])
+        self.data["I_HP"].append(u_bounded[0])
+        self.data["x_FAN"].append(u_bounded[1])
+        self.data["T_cell"].append(values["T_cell"])
+        self.data["I_BT"].append(values["I_BT"])
+        self.data["U_BT"].append(values["U_BT"])
+        self.data["U_oc"].append(values["U_oc"])
+        self.data["U_HP"].append(values["U_HP"])
+        self.data["COP_cooling"].append(values["COP_cooling"])
+
+    def run(self, with_initial_time:bool=False, initial_time_span:int=100) -> pd.DataFrame:
         x_prev = self.x0
+
+        if with_initial_time:
+            assert initial_time_span > 0, "initial_time_span must be greater than 0"
+            assert initial_time_span >= self.dt, "initial_time_span must be greater than or equal to dt"
+
+            self.initial_time_span = -initial_time_span
+
+            initial_time_steps = int(initial_time_span / self.dt)
+            u = np.array([0.0, 0.0])
+
+            for t in reversed(range(1, initial_time_steps + 1)):
+                current_time = -t * self.dt
+
+                # Advance system states
+                x_next, u_bounded = self.model.discretized_update(u, self.dt)
+
+                # Get internal values
+                values = self.model.get_values(x_prev, u_bounded)
+
+                self._append_sim_data(current_time, x_next, u_bounded, values)
 
         for t in range(self.time_steps):
             current_time = t * self.dt
@@ -68,18 +105,7 @@ class Simulation:
             # Get internal values
             values = self.model.get_values(x_prev, u_bounded)
 
-            self.data["time"].append(current_time)
-            self.data["SoC"].append(x_next[0])
-            self.data["T_c"].append(x_next[1])
-            self.data["T_h"].append(x_next[2])
-            self.data["I_HP"].append(u_bounded[0])
-            self.data["x_FAN"].append(u_bounded[1])
-            self.data["T_cell"].append(values["T_cell"])
-            self.data["I_BT"].append(values["I_BT"])
-            self.data["U_BT"].append(values["U_BT"])
-            self.data["U_oc"].append(values["U_oc"])
-            self.data["U_HP"].append(values["U_HP"])
-            self.data["COP_cooling"].append(values["COP_cooling"])
+            self._append_sim_data(current_time, x_next, u_bounded, values)
 
             x_prev = x_next
 
@@ -102,7 +128,7 @@ class Simulation:
         # Conversion
         results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
 
-        xlimits = (0, self.time_span)
+        xlimits = (self.initial_time_span, self.time_span)
 
         fig, axs = plt.subplots(2, 3, figsize=(15, 5))
 
