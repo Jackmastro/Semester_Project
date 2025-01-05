@@ -26,18 +26,18 @@ class Simulation:
         self.x0 = self.model.get_initial_state
 
         self.data = {
-            "time":     [],
-            "SoC":      [self.x0[0]],
-            "T_c":      [self.x0[1]],
-            "T_h":      [self.x0[2]],
-            "I_HP":     [],
-            "x_FAN":    [],
-            "T_cell":   [self.x0[1]], # Assuming equal to Tc
-            "I_BT":     [],
-            "U_BT":     [],
-            "U_oc":     [],
-            "U_HP":     [],
-            "COP":      [],
+            "time":        [],
+            "SoC":         [self.x0[0]],
+            "T_c":         [self.x0[1]],
+            "T_h":         [self.x0[2]],
+            "I_HP":        [],
+            "x_FAN":       [],
+            "T_cell":      [self.x0[1]], # Assuming equal to Tc
+            "I_BT":        [],
+            "U_BT":        [],
+            "U_oc":        [],
+            "U_HP":        [],
+            "COP_cooling": [],
         }
         self.data_df:pd.DataFrame = pd.DataFrame()
 
@@ -79,7 +79,7 @@ class Simulation:
             self.data["U_BT"].append(values["U_BT"])
             self.data["U_oc"].append(values["U_oc"])
             self.data["U_HP"].append(values["U_HP"])
-            self.data["COP"].append(values["COP"])
+            self.data["COP_cooling"].append(values["COP_cooling"])
 
             x_prev = x_next
 
@@ -209,8 +209,8 @@ class Simulation:
         # Conversion
         results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
 
-        x_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
-        y_sim = results["I_HP"].to_numpy()
+        DT_HP_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
+        I_HP_sim = results["I_HP"].to_numpy()
 
         # Arrows
         arrow_step = 80
@@ -219,29 +219,33 @@ class Simulation:
         x_vec = np.linspace(-100, 100, self.time_steps)
         y_vec_min, y_vec_max = self.model.get_constraints_U_BT2I_HP(x_vec)
 
-        # Color gradient for COP
-        COP_sim = results["COP"].to_numpy()
-        mask = y_sim < 0  # get negative current values
-        COP = COP_sim.copy() - mask  # correct for negative values by subtracting 1
+        ### Color gradient for COP
+        COP_cooling = results["COP_cooling"].to_numpy()
+
+        # Get negative current: separate between cooling and heating
+        mask = I_HP_sim < 0
+
+        # Correct COP with heating parts
+        COP = COP_cooling.copy() + mask
 
         cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
         norm = Normalize(vmin=0, vmax=5)
-        points = np.array([x_sim, y_sim]).T.reshape(-1, 1, 2)
+        points = np.array([DT_HP_sim, I_HP_sim]).T.reshape(-1, 1, 2)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
         lc = LineCollection(segments, cmap=cmap, norm=norm)
         lc.set_array(COP)
         lc.set_linewidth(2)
 
-        # Plot
+        ### Plot
         fig, ax = plt.subplots(figsize=(10, 2))
         ax.axhline(y=0, lw=1, color='black', label='_nolegend_')
         ax.axvline(x=0, lw=1, color='black', label='_nolegend_')
         ax.add_collection(lc)
 
-        for i in range(0, len(x_sim) - arrow_step, arrow_step):
+        for i in range(0, len(DT_HP_sim) - arrow_step, arrow_step):
             ax.arrow(
-                x_sim[i], y_sim[i],
-                x_sim[i + 1] - x_sim[i], y_sim[i + 1] - y_sim[i],
+                DT_HP_sim[i], I_HP_sim[i],
+                DT_HP_sim[i + 1] - DT_HP_sim[i], I_HP_sim[i + 1] - I_HP_sim[i],
                 head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
             )
 

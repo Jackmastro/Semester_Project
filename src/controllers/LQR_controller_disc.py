@@ -9,7 +9,7 @@ class LQRController_disc(ControllerBase):
         self.setpoint = setpoint_T_cell
         
         # Calculate offset for converting Tc to T_cell
-        R_frac = (model.R_4_lambda + model.R_5) / model.R_5
+        R_frac = (model.R_c_cell + model.R_cell_amb) / model.R_cell_amb
         self.Tc_inf = (setpoint_T_cell - model.T_amb) * R_frac + model.T_amb
 
         self.x_bar = np.array([1, self.Tc_inf, model.T_amb])

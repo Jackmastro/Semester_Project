@@ -34,8 +34,10 @@ class Model:
         self.params_values = {
             'n_BT':         self.n_BT, # Battery
             'Q_max':        self.Q_BT_max,
-            'R_in':         self.R_BT_int,
+            'R_BT':         self.R_BT,
             'P_rest':       self.P_rest,
+            'Q_rest':       self.Q_rest,
+            'I_rest':       self.I_rest,
             'a3':           self.BT_coefs["a3"].iloc[0],
             'a2':           self.BT_coefs["a2"].iloc[0],
             'a1':           self.BT_coefs["a1"].iloc[0],
@@ -50,20 +52,17 @@ class Model:
             'd_FAN':        self.FAN_coefs["d"].iloc[0],
             'I_LED':        self.I_LED, # LED
             'x_LED':        self.x_LED_tot,
-            'P_r':          self.P_LED_r,
+            'P_rad':        self.P_rad,
             'S_M':          self.S_M, # HP
             'R_M':          self.R_M,
             'K_M':          self.K_M,
             'cp_Al':        self.cp_Al, # Thermal
-            'cp_w':         self.cp_H2O,
             'T_amb':        self.T_amb,
             'm_c':          self.m_2 + self.m_4,
             'm_h':          self.m_1,
-            'R_floor':      self.R_floor_lambda,
-            'R4_lambda':    self.R_4_lambda,
-            'R5':           self.R_5,
-            'Q_rest':       self.Q_rest,
-            'I_rest':       self.I_rest
+            'R_floor':      self.R_floor,
+            'R_c_cell':     self.R_c_cell,
+            'R_cell_amb':   self.R_cell_amb,
         }
 
         # Operational point initialization
@@ -79,7 +78,7 @@ class Model:
         self.U_rest = self.P_rest / self.I_rest # V
         self.n_BT = 2
         self.Q_BT_max = 3.0 * 3600 # As (used conversion: Ah = 3600 As)
-        self.R_BT_int = 0.1 # Ohm
+        self.R_BT = 0.1 # Ohm
         self.BT_coefs = load_coefficients('battery\\battery_fitted_coefficients_3rd.csv')
         self.I_BT_max = 15 # A
         self.I_BT_min = -3 # A
@@ -93,18 +92,18 @@ class Model:
         # LED parameters
         self.I_LED = LEDparams.I_LED # A
         self.x_LED_tot = LEDparams.x_LED_tot # total duty cycle
-        self.P_LED_r = LEDparams.P_r # W
+        self.P_rad = LEDparams.P_rad # W
 
         # Thermal parameters
         self.T_amb = T_amb # K
         self.cp_Al = 897.0 # J/kgK https://en.wikipedia.org/wiki/6061_aluminium_alloy
-        self.cp_H2O = 4180.0 # J/kgK https://www.engineeringtoolbox.com/specific-heat-capacity-water-d_660.html
+        # self.cp_H2O = 4180.0 # J/kgK https://www.engineeringtoolbox.com/specific-heat-capacity-water-d_660.html
         # self.cp_air = 1006.0 # J/kgK https://www.engineeringtoolbox.com/air-specific-heat-capacity-d_705.html?vA=37&degree=C&pressure=1bar#
 
         # Top thermal parameters - Diffuser
         # TODO estimation of parameters
-        self.R_4_lambda = 5 # K/W
-        self.R_5 = 25.0 # K/W
+        self.R_c_cell = 5.0 # K/W
+        self.R_cell_amb = 25.0 # K/W
 
         # Top Al thermal parameters
         self.m_2 = 0.0638 # kg
@@ -113,7 +112,7 @@ class Model:
 
         # Bottom Al thermal parameters - Heat sink
         self.m_1 = 0.0876 # kg
-        self.R_floor_lambda = 2.6 # K/W # TODO estimated real time
+        self.R_floor = 2.6 # K/W # TODO estimated real time
 
         # Heat pump - peltier module
         HP_params = load_coefficients('heat_pump\\HP_fitted_coefficients.csv')
@@ -128,6 +127,7 @@ class Model:
         self.I_HP_max = min(I_HP_max_datasheet, I_HP_max_electronics) # A
 
     def _init_operational_point(self) -> None:
+        # TODO gain scheduling
         x_SoC = 0.85
         T_c   = conv_temp(self.T_amb, 'C', 'K') # K
         T_h   = conv_temp(self.T_amb + 10.0, 'C', 'K') # K
@@ -138,65 +138,76 @@ class Model:
         self.u_op = np.array([I_HP, x_FAN])
 
     def _init_sym_model(self) -> None:
-        # State variables
+        # States
         x_SoC, T_c, T_h = sp.symbols('x_SoC, T_c, T_h')
         self.sym_x      = sp.Matrix([x_SoC, T_c, T_h])
 
-        # Input variables
+        # Control inputs
         I_HP, x_FAN = sp.symbols('I_HP, x_FAN')
         self.sym_u  = sp.Matrix([I_HP, x_FAN])
 
-        # Battery parameters
-        n, Q_max, R_in, P_rest = sp.symbols('n_BT, Q_max, R_in, P_rest')
-        a3, a2, a1, a0 = sp.symbols('a3, a2, a1, a0')
-        U_oc = a3 * x_SoC**3 + a2 * x_SoC**2 + a1 * x_SoC + a0 # V
-        # display(Markdown(r"$U_{oc}(x_{SoC}):$"), U_oc.subs(self.params_values))
+        # Exogenuos input
+        T_amb = sp.symbols('T_amb')
 
-        # Fan parameters
-        U_FAN, I_FAN = sp.symbols('U_FAN, I_FAN')
-        q, m = sp.symbols('q_FAN, m_FAN')
-        R_air_alpha = q + m * x_FAN # K/W
-        # a, b, c, d = sp.symbols('a_FAN, b_FAN, c_FAN, d_FAN')
-        # R_air_alpha = c + (1 / (x_FAN + a) + b - c) / (1 + sp.exp(-d * x_FAN)) # K/W
-        # display(Markdown(r"$R_{air}^\alpha(x_{FAN}):$"), R_air_alpha)
-        # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=1):$"), R_air_alpha.subs(self.params_values).subs({x_FAN: 1.0}))
-        # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=0):$"), R_air_alpha.subs(self.params_values).subs({x_FAN: 0.0}))
-
-        # LED parameters
-        I_LED, x_LED, P_r = sp.symbols('I_LED, x_LED, P_r')
-
-        # HP parameters - Peltier module
+        ### Parameters
+        # Peltier module - heat pump
         S_M, R_M, K_M = sp.symbols('S_M, R_M, K_M')
         U_HP = S_M * (T_h - T_c) + R_M * I_HP # V
         Q_c = S_M * I_HP * T_c - 0.5 * R_M * I_HP**2 - K_M * (T_h - T_c) # W
 
-        # Thermal parameters
-        cp_Al, T_amb = sp.symbols('cp_Al, T_amb')
+        # FAN
+        U_FAN, I_FAN = sp.symbols('U_FAN, I_FAN')
+        q, m         = sp.symbols('q_FAN, m_FAN')
+        R_FAN_alpha = q + m * x_FAN # K/W
+        # a, b, c, d = sp.symbols('a_FAN, b_FAN, c_FAN, d_FAN')
+        # R_FAN_alpha = c + (1 / (x_FAN + a) + b - c) / (1 + sp.exp(-d * x_FAN)) # K/W
+        # display(Markdown(r"$R_{air}^\alpha(x_{FAN}):$"), R_FAN_alpha)
+        # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=1):$"), R_FAN_alpha.subs(self.params_values).subs({x_FAN: 1.0}))
+        # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=0):$"), R_FAN_alpha.subs(self.params_values).subs({x_FAN: 0.0}))
 
-        # Top thermal parameters - Diffuser
-        R4_lambda, R5 = sp.symbols('R4_lambda, R5')
-        Q_LEDcell = (T_c - T_amb) / (R5 + R4_lambda) # W
+        # LED
+        I_LED, x_LED, P_rad = sp.symbols('I_LED, x_LED, P_rad')
 
-        # Top Al thermal parameters - Diffuser
+        # Battery
+        n, Q_max, R_BT, P_rest = sp.symbols('n_BT, Q_max, R_BT, P_rest')
+        a3, a2, a1, a0         = sp.symbols('a3, a2, a1, a0')
+        U_oc = a3 * x_SoC**3 + a2 * x_SoC**2 + a1 * x_SoC + a0 # V
+        # display(Markdown(r"$U_{oc}(x_{SoC}):$"), U_oc.subs(self.params_values))
+
+        # Thermal
+        cp_Al = sp.symbols('cp_Al')
+
+        # Top static
+        R_c_cell, R_cell_amb = sp.symbols('R_c_cell, R_cell_amb')
+        Q_LED_cell = (T_c - T_amb) / (R_cell_amb + R_c_cell) # W
+
+        # Cold
         m_c = sp.symbols('m_c')
 
-        # Bottom Al thermal parameters - Heat sink
-        m_h, R_floor_lambda, Q_rest = sp.symbols('m_h, R_floor, Q_rest')
-        R_eq = (R_floor_lambda * R_air_alpha) / (R_floor_lambda + R_air_alpha) # K/W
-        # display(Markdown(r"$R_{eq}(x_{FAN}=1):$"), R_eq.subs(self.params_values).subs({x_FAN: 1.0}))
-        # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq.subs(self.params_values).subs({x_FAN: 0.0}))
+        # Hot
+        m_h, Q_rest = sp.symbols('m_h, Q_rest')
+
+        # Bottom static
+        R_floor = sp.symbols('R_floor')
+        R_eq_bottom = (R_floor * R_FAN_alpha) / (R_floor + R_FAN_alpha) # K/W equivalent parallel resistance
+        # display(Markdown(r"$R_{eq}(x_{FAN}=1):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 1.0}))
+        # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 0.0}))
 
         ### Calculations
-        # FAN calculation
+        # Output
+        T_cell = R_cell_amb * Q_LED_cell + T_amb # K
+        # display(Markdown(r"$T_{cell}:$"), T_cell)
+
+        # FAN
         P_FAN = I_FAN * U_FAN * x_FAN # W
 
-        # HP calculation
+        # Peltier module - heat pump
         P_HP = U_HP * I_HP # W
-        COP = 1 + Q_c / P_HP # only valid for positive I_HP (cooling)
+        COP_cooling = sp.sqrt(Q_c**2) / sp.sqrt(P_HP**2)
 
-        # BT calculation
-        I_BT = (U_oc + R_in*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_in*I_LED*x_LED*U_oc + (R_in*I_LED*x_LED)**2 - 4*R_in*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_in) # A
-        U_BT = U_oc - R_in * I_BT # V
+        # Battery
+        I_BT = (U_oc + R_BT*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_BT*I_LED*x_LED*U_oc + (R_BT*I_LED*x_LED)**2 - 4*R_BT*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_BT) # A
+        U_BT = U_oc - R_BT * I_BT # V
         P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
         # display(Markdown(r"$U_{BT}^{}:$"), U_BT.subs(self.params_values).subs({I_HP:3.0,  x_FAN: 1.0, x_SoC: 1.0}))
@@ -206,25 +217,24 @@ class Model:
         # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{min}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 0.0}))
 
-        # LED calculation
+        # LED
         P_LED = I_LED * U_BT * x_LED # W
-        Q_LED = P_LED - P_r # W
+        Q_LED = P_LED - P_rad # W
 
-        # Output: T_cell
-        T_cell = R5 * Q_LEDcell + T_amb # K
-        # display(Markdown(r"$T_{cell}:$"), T_cell)
-
-        # Nonlinear ODEs
-        dTh_dt = (1 / (m_h * cp_Al)) * (Q_c + P_HP - (T_h - T_amb) / R_eq + Q_rest)
-        dTc_dt = (1 / (m_c * cp_Al)) * (Q_LED - Q_LEDcell - Q_c)
+        ### Nonlinear ODEs
+        dTh_dt = (1 / (m_h * cp_Al)) * (Q_c + P_HP - (T_h - T_amb) / R_eq_bottom + Q_rest)
+        dTc_dt = (1 / (m_c * cp_Al)) * (Q_LED - Q_LED_cell - Q_c)
         dxSoC_dt = - I_BT / (n * Q_max)
 
-        # Symbolic dynamics, output and linearization
+        ### Dynamics
+        # Symbolic
         self.f_symb = sp.Matrix([dxSoC_dt, dTc_dt, dTh_dt])
         self.g_symb = sp.Matrix([T_c])
         # display(Markdown(r"$\dot{x} = f(x, u):$"), self.f_symb)
+        # display(Markdown(r"$\dot{x} = f(x, u):$"), sp.latex(self.f_symb))
         # display(Markdown(r"$y = g(x, u):$"), self.g_symb)
 
+        # Linearization
         self.A_symb = self.f_symb.jacobian(self.sym_x)
         self.B_symb = self.f_symb.jacobian(self.sym_u)
         self.C_symb = self.g_symb.jacobian(self.sym_x)
@@ -232,7 +242,7 @@ class Model:
         # display(Markdown(r"$A = \nabla_x f:$"), self.A_symb.subs(self.params_values).subs({x_SoC: 0.85, T_c: 25.0, T_h: 55.0, x_FAN: 1.0}))
         # display(Markdown(r"$B = \nabla_u f:$"), self.B_symb.subs(self.params_values).subs({x_SoC: 0.85, T_c: 25.0, T_h: 55.0, x_FAN: 1.0}))
 
-        # Create numerical functions with parameters already inserted
+        # Numerical functions with parameters already inserted
         self.f_num = sp.lambdify((self.sym_x, self.sym_u), self.f_symb.subs(self.params_values), modules="numpy")
         self.g_num = sp.lambdify((self.sym_x, self.sym_u), self.g_symb.subs(self.params_values), modules="numpy")
 
@@ -241,13 +251,13 @@ class Model:
         self.C_num = sp.lambdify((self.sym_x, self.sym_u), self.C_symb.subs(self.params_values), modules="numpy")
         self.D_num = sp.lambdify((self.sym_x, self.sym_u), self.D_symb.subs(self.params_values), modules="numpy")
 
-        # Values
-        self.U_BT_num   = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
-        self.U_oc_num   = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
-        self.U_HP_num   = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
-        self.COP_num    = sp.lambdify((self.sym_x, self.sym_u), COP.subs(self.params_values), modules="numpy")
-        self.I_BT_num   = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
-        self.T_cell_num = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
+        # Numerical functions for plots - values
+        self.U_BT_num        = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
+        self.U_oc_num        = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
+        self.U_HP_num        = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
+        self.COP_cooling_num = sp.lambdify((self.sym_x, self.sym_u), COP_cooling.subs(self.params_values), modules="numpy")
+        self.I_BT_num        = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
+        self.T_cell_num      = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
 
     def get_continuous_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         if xss is None:
@@ -308,12 +318,12 @@ class Model:
     
     def get_values(self, x:np.ndarray, u:np.ndarray) -> dict:
         return {
-            'U_BT':     self.U_BT_num(x, u),
-            'U_oc':     self.U_oc_num(x, u),
-            'U_HP':     self.U_HP_num(x, u),
-            'COP':      self.COP_num(x, u),
-            'I_BT':     self.I_BT_num(x, u),
-            'T_cell':   self.T_cell_num(x, u),
+            'U_BT':        self.U_BT_num(x, u),
+            'U_oc':        self.U_oc_num(x, u),
+            'U_HP':        self.U_HP_num(x, u),
+            'COP_cooling': self.COP_cooling_num(x, u),
+            'I_BT':        self.I_BT_num(x, u),
+            'T_cell':      self.T_cell_num(x, u),
         }
     
     def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:
