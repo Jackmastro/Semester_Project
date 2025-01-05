@@ -244,8 +244,9 @@ class Model:
         # display(Markdown(r"$B = \nabla_u f:$"), self.B_symb.subs(self.params_values).subs({x_SoC: 0.85, T_c: 25.0, T_h: 55.0, x_FAN: 1.0}))
 
         # Numerical functions with parameters already inserted
-        self.f_num = sp.lambdify((self.sym_x, self.sym_u), self.f_symb.subs(self.params_values), modules="numpy")
-        self.g_num = sp.lambdify((self.sym_x, self.sym_u), self.g_symb.subs(self.params_values), modules="numpy")
+        self.f_num_LED_off = sp.lambdify((self.sym_x, self.sym_u), self.f_symb.subs({'x_LED': 0.0}).subs(self.params_values), modules="numpy")
+        self.f_num         = sp.lambdify((self.sym_x, self.sym_u), self.f_symb.subs(self.params_values), modules="numpy")
+        self.g_num         = sp.lambdify((self.sym_x, self.sym_u), self.g_symb.subs(self.params_values), modules="numpy")
 
         self.A_num = sp.lambdify((self.sym_x, self.sym_u), self.A_symb.subs(self.params_values), modules="numpy")
         self.B_num = sp.lambdify((self.sym_x, self.sym_u), self.B_symb.subs(self.params_values), modules="numpy")
@@ -286,13 +287,16 @@ class Model:
         
         return A_d, B_d, h_d, C_d, D_d, l_d
     
-    def dynamics_f(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
-        return np.array(self.f_num(x, u)).flatten()
+    def dynamics_f(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> np.ndarray:
+        if LED_off:
+            return np.array(self.f_num_LED_off(x, u)).flatten()
+        else:
+            return np.array(self.f_num(x, u)).flatten()
 
     def observer_g(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         return np.array(self.g_num(x, u)).flatten()
 
-    def discretized_update(self, u:np.ndarray, dt:float) -> np.ndarray:
+    def discretized_update(self, u:np.ndarray, dt:float, LED_off:bool=False) -> np.ndarray:
         """
         Update the states using Runge-Kutta of 4th order integration.
         """
@@ -303,10 +307,10 @@ class Model:
 
         # Runge-Kutta 4th order
         k = np.zeros((4, len(x)))
-        k[0] = self.dynamics_f(x, u_bounded)
-        k[1] = self.dynamics_f(x + 0.5 * dt * k[0], u_bounded)
-        k[2] = self.dynamics_f(x + 0.5 * dt * k[1], u_bounded)
-        k[3] = self.dynamics_f(x + dt * k[2], u_bounded)
+        k[0] = self.dynamics_f(x, u_bounded, LED_off=LED_off)
+        k[1] = self.dynamics_f(x + 0.5 * dt * k[0], u_bounded, LED_off=LED_off)
+        k[2] = self.dynamics_f(x + 0.5 * dt * k[1], u_bounded, LED_off=LED_off)
+        k[3] = self.dynamics_f(x + dt * k[2], u_bounded, LED_off=LED_off)
 
         self.x_next = x + (dt / 6.0) * (k[0] + 2 * k[1] + 2 * k[2] + k[3])
 
@@ -322,13 +326,19 @@ class Model:
     def get_output(self) -> np.ndarray:
         return self.observer_g(self.x_prev, self.u)
     
-    def get_values(self, x:np.ndarray, u:np.ndarray) -> dict:
+    def get_values(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> dict:
         # Condition for COP_cooling with P_HP close to zero
         tol = 1e-4
         if abs(self.P_HP_num(x, u)) < tol:
             cop_cooling = np.nan
         else:
             cop_cooling = self.COP_cooling_num(x, u)
+
+        # LED values
+        if LED_off:
+            x_LED = 0.0
+        else:
+            x_LED = self.x_LED_tot
 
         return {
             'U_BT':        self.U_BT_num(x, u),
@@ -337,6 +347,7 @@ class Model:
             'COP_cooling': cop_cooling,
             'I_BT':        self.I_BT_num(x, u),
             'T_cell':      self.T_cell_num(x, u),
+            'x_LED':       x_LED,
         }
     
     def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:

@@ -41,18 +41,19 @@ class Simulation:
             "U_oc":        [],
             "U_HP":        [],
             "COP_cooling": [],
+            "x_LED":       [],
         }
         self.data_df:pd.DataFrame = pd.DataFrame()
 
         self.colors = {
             "battery": "green",
-            "HP": "orange",
-            "fan": "purple",
-            "cell": "lightblue",
-            "cold": "blue",
-            "hot": "red",
-            "led": "pink",
-            "rest": "gray",
+            "HP":      "orange",
+            "fan":     "purple",
+            "cell":    "lightblue",
+            "cold":    "blue",
+            "hot":     "red",
+            "led":     "pink",
+            "rest":    "gray",
         }
 
     def _append_sim_data(self, current_time:float, x_next:np.ndarray, u_bounded:np.ndarray, values:dict) -> None:
@@ -68,6 +69,7 @@ class Simulation:
         self.data["U_oc"].append(values["U_oc"])
         self.data["U_HP"].append(values["U_HP"])
         self.data["COP_cooling"].append(values["COP_cooling"])
+        self.data["x_LED"].append(values["x_LED"])
 
     def run(self, with_initial_time:bool=False, initial_time_span:int=100) -> pd.DataFrame:
         x_prev = self.x0
@@ -85,10 +87,10 @@ class Simulation:
                 current_time = -t * self.dt
 
                 # Advance system states
-                x_next, u_bounded = self.model.discretized_update(u, self.dt)
+                x_next, u_bounded = self.model.discretized_update(u, self.dt, LED_off=True)
 
                 # Get internal values
-                values = self.model.get_values(x_prev, u_bounded)
+                values = self.model.get_values(x_prev, u_bounded, LED_off=True)
 
                 self._append_sim_data(current_time, x_next, u_bounded, values)
 
@@ -179,7 +181,7 @@ class Simulation:
         axs[1, 1].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 1].axvline(x=0, lw=1, color="black", label='_nolegend_')
         axs[1, 1].axhline(y=self.model.I_rest, color=self.colors["rest"], label=r'$I_{rest}$')
-        axs[1, 1].axhline(y=self.model.I_LED * self.model.x_LED_tot, color=self.colors["led"], label=r'$I_{LED}$')
+        axs[1, 1].plot(results["time"], results["x_LED"] * self.model.I_LED, color=self.colors["led"], label=r'$I_{LED}$')
         axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_{FAN}$')
         axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_{BT}$')
         axs[1, 1].plot(results["time"], results["I_HP"], color=self.colors["HP"], label=r'$I_{HP}$')
