@@ -125,6 +125,7 @@ class Model:
         I_HP_max_datasheet = HP_params["I_max"].iloc[0] # A
         I_HP_max_electronics = 3.0 # A when attached to the battery
         self.I_HP_max = min(I_HP_max_datasheet, I_HP_max_electronics) # A
+        self.I_HP_min = -self.I_HP_max
 
     def _init_operational_point(self) -> None:
         # TODO gain scheduling
@@ -353,24 +354,37 @@ class Model:
     def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:
         # Zero order approximation for U_BT
         U_BT = self.U_BT_num(self.x_op, self.u_op) # TODO use max and min values
-        I_HP_max_I_source = (U_BT - self.S_M * delta_T) / self.R_M
-        I_HP_min_I_source = (- U_BT - self.S_M * delta_T) / self.R_M
-        return I_HP_min_I_source, I_HP_max_I_source
+        I_HP_max_U_BT = (U_BT - self.S_M * delta_T) / self.R_M
+        I_HP_min_U_BT = (- U_BT - self.S_M * delta_T) / self.R_M
+        return I_HP_min_U_BT, I_HP_max_U_BT
     
-    def get_constraints_I_BT2I_HP(self, x_FAN:np.ndarray) -> np.ndarray:
-        # TODO implement
-        pass
+    def get_constraints_I_BT2I_HP(self, u_bounded:np.ndarray) -> np.ndarray:
+        # Assuming that the current of the fan is satisfied
+        C = self.I_LED * self.x_LED_tot + self.I_FAN * u_bounded[1] + self.I_rest
+
+        if u_bounded[0] >= 0:
+            I_HP_min_I_BT = self.I_BT_min - C
+            I_HP_max_I_BT = self.I_BT_max - C
+        else:
+            I_HP_min_I_BT = C - self.I_BT_max
+            I_HP_max_I_BT = C - self.I_BT_min
+
+        return I_HP_min_I_BT, I_HP_max_I_BT
     
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         u_bounded = np.copy(u)
 
-        # HP current bounds
-        I_HP_min_I_source, I_HP_max_I_source = self.get_constraints_U_BT2I_HP(x[2] - x[1])
-        u_bounded[0] = np.clip(u_bounded[0], I_HP_min_I_source, I_HP_max_I_source)
-        u_bounded[0] = np.clip(u_bounded[0], -self.I_HP_max, self.I_HP_max)
-
         # Fan duty cycle bounds
         u_bounded[1] = np.clip(u_bounded[1], 0.0, 1.0)
+
+        # HP current bounds
+        I_HP_min_U_BT, I_HP_max_U_BT = self.get_constraints_U_BT2I_HP(x[2] - x[1])
+        u_bounded[0] = np.clip(u_bounded[0], I_HP_min_U_BT, I_HP_max_U_BT)
+        u_bounded[0] = np.clip(u_bounded[0], self.I_HP_min, self.I_HP_max)
+
+        I_HP_min_I_BT, I_HP_max_I_BT = self.get_constraints_I_BT2I_HP(u_bounded)
+        u_bounded[0] = np.clip(u_bounded[0], I_HP_min_I_BT, I_HP_max_I_BT)
+
         return u_bounded
     
     def _states_bounds(self, x:np.ndarray) -> np.ndarray:
