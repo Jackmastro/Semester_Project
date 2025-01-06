@@ -25,6 +25,7 @@ class Simulation:
 
         # Placeholder for plots
         self.initial_time_span = 0
+        self.initial_time_steps = 0
 
         self.x0 = self.model.get_initial_state
 
@@ -80,10 +81,10 @@ class Simulation:
 
             self.initial_time_span = -initial_time_span
 
-            initial_time_steps = int(initial_time_span / self.dt)
+            self.initial_time_steps = int(initial_time_span / self.dt)
             u = np.array([0.0, 0.0])
 
-            for t in reversed(range(1, initial_time_steps + 1)):
+            for t in reversed(range(1, self.initial_time_steps + 1)):
                 current_time = -t * self.dt
 
                 # Advance system states
@@ -127,9 +128,6 @@ class Simulation:
                 raise ValueError("No data to plot")
             results = self.data_df
 
-        # Conversion
-        results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
-
         xlimits = (self.initial_time_span, self.time_span)
 
         fig, axs = plt.subplots(2, 3, figsize=(15, 5))
@@ -142,9 +140,9 @@ class Simulation:
         ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
         ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
         ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
-        ax_temp.plot(results["time"], results["T_cell"], color=self.colors["cell"], label=r'$T_{cell}$')
-        ax_temp.plot(results["time"], results["T_c"], color=self.colors["cold"], label=r'$T_{c}$')
-        ax_temp.plot(results["time"], results["T_h"], color=self.colors["hot"], label=r'$T_{h}$')
+        ax_temp.plot(results["time"], conv_temp(results["T_cell"].to_numpy(), 'K', 'C'), color=self.colors["cell"], label=r'$T_{cell}$')
+        ax_temp.plot(results["time"], conv_temp(results["T_c"].to_numpy(), 'K', 'C'), color=self.colors["cold"], label=r'$T_{c}$')
+        ax_temp.plot(results["time"], conv_temp(results["T_h"].to_numpy(), 'K', 'C'), color=self.colors["hot"], label=r'$T_{h}$')
         ax_temp.set_xlabel('Time [s]')
         ax_temp.set_ylabel('Temperature [°C]')
         ax_temp.set_title(title)
@@ -233,9 +231,6 @@ class Simulation:
             if self.data_df is None:
                 raise ValueError("No data to plot")
             results = self.data_df
-
-        # Conversion
-        results[["T_cell", "T_c", "T_h"]] = conv_temp(results[["T_cell", "T_c", "T_h"]].to_numpy(), 'K', 'C')
 
         DT_HP_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
         I_HP_sim = results["I_HP"].to_numpy()
