@@ -14,13 +14,16 @@ class Model:
         """
         x0 : Initial state
 
-        u1: current through the peltier module
-        u2: PWM fan
+        u1: I_HP
+        u2: x_FAN
 
-        x1: SoC
+        x1: x_SoC
         x2: T_HP_c
         x3: T_HP_h
         """
+        # Characterization between cooling or heating for the Peltier module (heat pump)
+        self.HP_in_cooling = True
+
         # Initial condition
         self.x0 = x0
         self.x_prev = x0
@@ -58,15 +61,15 @@ class Model:
             'K_M':          self.K_M,
             'cp_Al':        self.cp_Al, # Thermal
             'T_amb':        self.T_amb,
-            'm_c':          self.m_2 + self.m_4,
-            'm_h':          self.m_1,
+            'm_top':          self.m_2 + self.m_4,
+            'm_bot':          self.m_1,
             'R_floor':      self.R_floor,
             'R_c_cell':     self.R_c_cell,
             'R_cell_amb':   self.R_cell_amb,
         }
 
         # Operational point initialization
-        self._init_operational_point()
+        self._init_operational_points()
 
         # Symbolic initialization
         self._init_sym_model()
@@ -127,88 +130,101 @@ class Model:
         self.I_HP_max = min(I_HP_max_datasheet, I_HP_max_electronics) # A
         self.I_HP_min = -self.I_HP_max
 
-    def _init_operational_point(self) -> None:
-        # TODO gain scheduling
-        x_SoC = 0.85
-        T_c   = conv_temp(self.T_amb, 'C', 'K') # K
-        T_h   = conv_temp(self.T_amb + 10.0, 'C', 'K') # K
-        I_HP  = 1.2 # A
-        x_FAN = 1.0 # duty cycle
+    def _init_operational_points(self) -> None:
+        x_SoC     = 0.85
+        T_cold    = conv_temp(self.T_amb, 'C', 'K') # K
+        T_hot     = conv_temp(self.T_amb + 20.0, 'C', 'K') # K
+        I_HP_cool = 1.2 # A
+        x_FAN     = 1.0 # duty cycle
 
-        self.x_op = np.array([x_SoC, T_c, T_h])
-        self.u_op = np.array([I_HP, x_FAN])
+        # COOLING
+        self.x_op_cool = np.array([x_SoC,
+                                   T_cold,
+                                   T_hot])
+        self.u_op_cool = np.array([I_HP_cool,
+                                   x_FAN])
+        
+        # HEATING
+        self.x_op_heat = np.array([x_SoC,
+                                   T_hot,
+                                   T_cold])
+        self.u_op_heat = np.array([-I_HP_cool,
+                                   x_FAN])
 
     def _init_sym_model(self) -> None:
         # States
-        x_SoC, T_c, T_h = sp.symbols('x_SoC, T_c, T_h')
-        self.sym_x      = sp.Matrix([x_SoC, T_c, T_h])
+        x_SoC, T_top, T_bot = sp.symbols('x_SoC, T_top, T_bot')
+        self.sym_x = sp.Matrix([x_SoC,
+                                T_top,
+                                T_bot])
 
         # Control inputs
         I_HP, x_FAN = sp.symbols('I_HP, x_FAN')
-        self.sym_u  = sp.Matrix([I_HP, x_FAN])
+        self.sym_u  = sp.Matrix([I_HP,
+                                 x_FAN])
 
         # Exogenous input
         T_amb = sp.symbols('T_amb')
 
         ### Parameters
-        # Peltier module - heat pump
+        ## Peltier module - heat pump
         S_M, R_M, K_M = sp.symbols('S_M, R_M, K_M')
-        U_HP = S_M * (T_h - T_c) + R_M * I_HP # V
-        # T_m = (T_h + T_c) / 2 # K
-        Q_c = S_M * I_HP * T_c - 0.5 * R_M * I_HP**2 - K_M * (T_h - T_c) # W
 
-        # FAN
+        ## FAN
         U_FAN, I_FAN = sp.symbols('U_FAN, I_FAN')
         q, m         = sp.symbols('q_FAN, m_FAN')
+        # a, b, c, d   = sp.symbols('a_FAN, b_FAN, c_FAN, d_FAN')
+
+        ## LED
+        I_LED, x_LED, P_rad = sp.symbols('I_LED, x_LED, P_rad')
+
+        ## Battery
+        n, Q_max, R_BT, P_rest, I_rest = sp.symbols('n_BT, Q_max, R_BT, P_rest, I_rest')
+        a3, a2, a1, a0                 = sp.symbols('a3, a2, a1, a0')
+        U_oc = a3 * x_SoC**3 + a2 * x_SoC**2 + a1 * x_SoC + a0 # V
+        # display(Markdown(r"$U_{oc}(x_{SoC}):$"), U_oc.subs(self.params_values))
+
+        ## Thermal
+        cp_Al = sp.symbols('cp_Al')
+
+        ## Top static
+        R_c_cell, R_cell_amb = sp.symbols('R_c_cell, R_cell_amb')
+
+        ## Top dynamic
+        m_top = sp.symbols('m_top')
+
+        ## Bottom dynamic
+        m_bot, Q_rest = sp.symbols('m_bot, Q_rest')
+
+        ## Bottom static
+        R_floor = sp.symbols('R_floor')
+
+        ### Calculations
+        ## FAN
+        P_FAN = I_FAN * U_FAN * x_FAN # W
         R_FAN_alpha = q + m * x_FAN # K/W
-        # a, b, c, d = sp.symbols('a_FAN, b_FAN, c_FAN, d_FAN')
+
+        ## Top static
+        Q_LED_cell = (T_top - T_amb) / (R_cell_amb + R_c_cell) # W
+
+        ## Bottom static
+        R_eq_bottom = (R_floor * R_FAN_alpha) / (R_floor + R_FAN_alpha) # K/W equivalent parallel resistance
+        Q_bot_amb = (T_bot - T_amb) / R_eq_bottom
+        # display(Markdown(r"$R_{eq}(x_{FAN}=1):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 1.0}))
+        # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 0.0}))
+
+        ## Output
+        T_cell = R_cell_amb * Q_LED_cell + T_amb # K
+        # display(Markdown(r"$T_{cell}:$"), T_cell)
+
         # R_FAN_alpha = c + (1 / (x_FAN + a) + b - c) / (1 + sp.exp(-d * x_FAN)) # K/W
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}):$"), R_FAN_alpha)
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=1):$"), R_FAN_alpha.subs(self.params_values).subs({x_FAN: 1.0}))
         # display(Markdown(r"$R_{air}^\alpha(x_{FAN}=0):$"), R_FAN_alpha.subs(self.params_values).subs({x_FAN: 0.0}))
 
-        # LED
-        I_LED, x_LED, P_rad = sp.symbols('I_LED, x_LED, P_rad')
-
-        # Battery
-        n, Q_max, R_BT, P_rest = sp.symbols('n_BT, Q_max, R_BT, P_rest')
-        a3, a2, a1, a0         = sp.symbols('a3, a2, a1, a0')
-        U_oc = a3 * x_SoC**3 + a2 * x_SoC**2 + a1 * x_SoC + a0 # V
-        # display(Markdown(r"$U_{oc}(x_{SoC}):$"), U_oc.subs(self.params_values))
-
-        # Thermal
-        cp_Al = sp.symbols('cp_Al')
-
-        # Top static
-        R_c_cell, R_cell_amb = sp.symbols('R_c_cell, R_cell_amb')
-        Q_LED_cell = (T_c - T_amb) / (R_cell_amb + R_c_cell) # W
-
-        # Cold
-        m_c = sp.symbols('m_c')
-
-        # Hot
-        m_h, Q_rest = sp.symbols('m_h, Q_rest')
-
-        # Bottom static
-        R_floor = sp.symbols('R_floor')
-        R_eq_bottom = (R_floor * R_FAN_alpha) / (R_floor + R_FAN_alpha) # K/W equivalent parallel resistance
-        # display(Markdown(r"$R_{eq}(x_{FAN}=1):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 1.0}))
-        # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 0.0}))
-
-        ### Calculations
-        # Output
-        T_cell = R_cell_amb * Q_LED_cell + T_amb # K
-        # display(Markdown(r"$T_{cell}:$"), T_cell)
-
-        # FAN
-        P_FAN = I_FAN * U_FAN * x_FAN # W
-
-        # Peltier module - heat pump
-        P_HP = U_HP * I_HP # W
-        COP_cooling = sp.sqrt(Q_c**2) / sp.sqrt(P_HP**2) # Condition for P_HP close to zero in get_values
-
-        # Battery
-        I_BT = (U_oc + R_BT*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_BT*I_LED*x_LED*U_oc + (R_BT*I_LED*x_LED)**2 - 4*R_BT*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_BT) # A
+        ## Battery
+        # I_BT = (U_oc + R_BT*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_BT*I_LED*x_LED*U_oc + (R_BT*I_LED*x_LED)**2 - 4*R_BT*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_BT) # A
+        I_BT = I_LED*x_LED + I_FAN*x_FAN + sp.sqrt(I_HP**2) + I_rest # A
         U_BT = U_oc - R_BT * I_BT # V
         P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
@@ -219,82 +235,179 @@ class Model:
         # display(Markdown(r"$U_{BT}^{max}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 1.0}))
         # display(Markdown(r"$U_{BT}^{min}:$"), U_BT.subs(self.params_values).subs({I_HP:-3.0, x_FAN: 0.0, x_SoC: 0.0}))
 
-        # LED
+        ## LED
         P_LED = I_LED * U_BT * x_LED # W
         Q_LED = P_LED - P_rad # W
 
-        ### Nonlinear ODEs
-        dTh_dt = (1 / (m_h * cp_Al)) * (Q_c + P_HP - (T_h - T_amb) / R_eq_bottom + Q_rest)
-        dTc_dt = (1 / (m_c * cp_Al)) * (Q_LED - Q_LED_cell - Q_c)
-        dxSoC_dt = - I_BT / (n * Q_max)
-
-        ### Dynamics
+        ############################### INDEPENDENT of cooling or heating
+        ### Output
         # Symbolic
-        self.f_symb = sp.Matrix([dxSoC_dt, dTc_dt, dTh_dt])
-        self.g_symb = sp.Matrix([T_c])
+        self.g_symb = sp.Matrix([T_top])
         # display(Markdown(r"$\dot{x} = f(x, u):$"), self.f_symb)
         # display(Markdown(r"$\dot{x} = f(x, u):$"), sp.latex(self.f_symb))
         # display(Markdown(r"$y = g(x, u):$"), self.g_symb)
 
         # Linearization
-        self.A_symb = self.f_symb.jacobian(self.sym_x)
-        self.B_symb = self.f_symb.jacobian(self.sym_u)
         self.C_symb = self.g_symb.jacobian(self.sym_x)
         self.D_symb = self.g_symb.jacobian(self.sym_u)
-        # display(Markdown(r"$A = \nabla_x f:$"), self.A_symb.subs(self.params_values).subs({x_SoC: 0.85, T_c: 25.0, T_h: 55.0, x_FAN: 1.0}))
-        # display(Markdown(r"$B = \nabla_u f:$"), self.B_symb.subs(self.params_values).subs({x_SoC: 0.85, T_c: 25.0, T_h: 55.0, x_FAN: 1.0}))
+        # display(Markdown(r"$A = \nabla_x f:$"), self.A_symb.subs(self.params_values).subs({x_SoC: 0.85, T_top: 25.0, T_bot: 55.0, x_FAN: 1.0}))
+        # display(Markdown(r"$B = \nabla_u f:$"), self.B_symb.subs(self.params_values).subs({x_SoC: 0.85, T_top: 25.0, T_bot: 55.0, x_FAN: 1.0}))
 
         # Numerical functions with parameters already inserted
-        self.f_num_LED_off = sp.lambdify((self.sym_x, self.sym_u), self.f_symb.subs({'x_LED': 0.0}).subs(self.params_values), modules="numpy")
-        self.f_num         = sp.lambdify((self.sym_x, self.sym_u), self.f_symb.subs(self.params_values), modules="numpy")
-        self.g_num         = sp.lambdify((self.sym_x, self.sym_u), self.g_symb.subs(self.params_values), modules="numpy")
+        self.g_num = sp.lambdify((self.sym_x, self.sym_u), self.g_symb.subs(self.params_values), modules="numpy")
 
-        self.A_num = sp.lambdify((self.sym_x, self.sym_u), self.A_symb.subs(self.params_values), modules="numpy")
-        self.B_num = sp.lambdify((self.sym_x, self.sym_u), self.B_symb.subs(self.params_values), modules="numpy")
         self.C_num = sp.lambdify((self.sym_x, self.sym_u), self.C_symb.subs(self.params_values), modules="numpy")
         self.D_num = sp.lambdify((self.sym_x, self.sym_u), self.D_symb.subs(self.params_values), modules="numpy")
 
         # Numerical functions for plots - values
-        self.U_BT_num        = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
-        self.U_oc_num        = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
-        self.U_HP_num        = sp.lambdify((self.sym_x, self.sym_u), U_HP.subs(self.params_values), modules="numpy")
-        self.COP_cooling_num = sp.lambdify((self.sym_x, self.sym_u), COP_cooling.subs(self.params_values), modules="numpy")
-        self.I_BT_num        = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
-        self.T_cell_num      = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
+        self.U_BT_num   = sp.lambdify((self.sym_x, self.sym_u), U_BT.subs(self.params_values), modules="numpy")
+        self.U_oc_num   = sp.lambdify((self.sym_x, self.sym_u), U_oc.subs(self.params_values), modules="numpy")
+        self.I_BT_num   = sp.lambdify((self.sym_x, self.sym_u), I_BT.subs(self.params_values), modules="numpy")
+        self.T_cell_num = sp.lambdify((self.sym_x, self.sym_u), T_cell.subs(self.params_values), modules="numpy")
+
+        ## Peltier module - heat pump: split the model in two parts, depending whether we are cooling or heating the top part
+        ############################### COOLING of T_top
+        Delta_T_HP_cool = T_bot - T_top
+        U_HP_cool       = S_M*Delta_T_HP_cool + R_M*I_HP # V
+        P_HP_cool       = U_HP_cool*I_HP # W
+        Q_top_cool      = S_M*T_top*I_HP - 0.5*R_M*I_HP**2 - K_M*Delta_T_HP_cool # W
+        Q_bot_cool      = Q_top_cool + P_HP_cool # W
+        COP_cool        = sp.sqrt(Q_top_cool**2) / sp.sqrt(P_HP_cool**2) # Condition for P_HP close to zero in get_values
+
+        ### Nonlinear ODEs
+        dx_SoC_dt_cool = - I_BT / (n * Q_max)
+        dT_top_dt_cool = (1 / (m_top * cp_Al)) * (Q_LED - Q_LED_cell - Q_top_cool)
+        dT_bot_dt_cool = (1 / (m_bot * cp_Al)) * (Q_bot_cool - Q_bot_amb + Q_rest)
+
+        ### Dynamics
+        # Symbolic
+        self.f_symb_cool = sp.Matrix([dx_SoC_dt_cool,
+                                      dT_top_dt_cool,
+                                      dT_bot_dt_cool])
+
+        # Linearization
+        self.A_symb_cool = self.f_symb_cool.jacobian(self.sym_x)
+        self.B_symb_cool = self.f_symb_cool.jacobian(self.sym_u)
+
+        # Numerical functions with parameters already inserted
+        self.f_num_LED_off = sp.lambdify((self.sym_x, self.sym_u), self.f_symb_cool.subs({'x_LED': 0.0}).subs(self.params_values), modules="numpy") # needed for extending the plots to negative times
+        self.f_num_cool    = sp.lambdify((self.sym_x, self.sym_u), self.f_symb_cool.subs(self.params_values), modules="numpy")
+
+        self.A_num_cool    = sp.lambdify((self.sym_x, self.sym_u), self.A_symb_cool.subs(self.params_values), modules="numpy")
+        self.B_num_cool    = sp.lambdify((self.sym_x, self.sym_u), self.B_symb_cool.subs(self.params_values), modules="numpy")
+
+        # Numerical functions for plots - values
+        self.U_HP_num_cool  = sp.lambdify((self.sym_x, self.sym_u), U_HP_cool.subs(self.params_values), modules="numpy")
+        self.Q_top_num_cool = sp.lambdify((self.sym_x, self.sym_u), Q_top_cool.subs(self.params_values), modules="numpy")
+        self.COP_num_cool   = sp.lambdify((self.sym_x, self.sym_u), COP_cool.subs(self.params_values), modules="numpy")
 
         # Needed to check condition on COP
-        self.P_HP_num = sp.lambdify((self.sym_x, self.sym_u), P_HP.subs(self.params_values), modules="numpy")
+        self.P_HP_num_cool = sp.lambdify((self.sym_x, self.sym_u), P_HP_cool.subs(self.params_values), modules="numpy")
 
-    def get_continuous_linearization(self, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
-        if xss is None:
-            xss = self.x_op
-        if uss is None:
-            uss = self.u_op
+        ############################### HEATING of T_top
+        Delta_T_HP_heat = T_top - T_bot
+        U_HP_heat       = S_M*Delta_T_HP_heat + R_M*I_HP # V
+        P_HP_heat       = U_HP_heat*I_HP # W
+        Q_top_heat      = -S_M*T_top*I_HP - 0.5*R_M*I_HP**2 + K_M*Delta_T_HP_heat # W
+        Q_bot_heat      = Q_top_heat + P_HP_heat # W
+        COP_heat        = sp.sqrt(Q_top_heat**2) / sp.sqrt(P_HP_heat**2) # Condition for P_HP close to zero in get_values
 
-        A = self.A_num(xss, uss)
-        B = self.B_num(xss, uss)
-        h = self.f_num(xss, uss).reshape(-1,) - A @ xss - B @ uss
+        ### Nonlinear ODEs
+        dx_SoC_dt_heat = - I_BT / (n * Q_max)
+        dT_top_dt_heat = (1 / (m_top * cp_Al)) * (Q_LED - Q_LED_cell - Q_top_heat)
+        dT_bot_dt_heat = (1 / (m_bot * cp_Al)) * (Q_bot_heat - Q_bot_amb + Q_rest)
+        
+        ### Dynamics
+        # Symbolic
+        self.f_symb_heat = sp.Matrix([dx_SoC_dt_heat,
+                                        dT_top_dt_heat,
+                                        dT_bot_dt_heat])
+
+        # Linearization
+        self.A_symb_heat = self.f_symb_heat.jacobian(self.sym_x)
+        self.B_symb_heat = self.f_symb_heat.jacobian(self.sym_u)
+
+        # Numerical functions with parameters already inserted
+        self.f_num_heat    = sp.lambdify((self.sym_x, self.sym_u), self.f_symb_heat.subs(self.params_values), modules="numpy")
+
+        self.A_num_heat    = sp.lambdify((self.sym_x, self.sym_u), self.A_symb_heat.subs(self.params_values), modules="numpy")
+        self.B_num_heat    = sp.lambdify((self.sym_x, self.sym_u), self.B_symb_heat.subs(self.params_values), modules="numpy")
+
+        # Numerical functions for plots - values
+        self.U_HP_num_heat  = sp.lambdify((self.sym_x, self.sym_u), U_HP_heat.subs(self.params_values), modules="numpy")
+        self.Q_top_num_heat = sp.lambdify((self.sym_x, self.sym_u), Q_top_heat.subs(self.params_values), modules="numpy")
+        self.COP_num_heat   = sp.lambdify((self.sym_x, self.sym_u), COP_heat.subs(self.params_values), modules="numpy")
+
+        # Needed to check condition on COP
+        self.P_HP_num_heat = sp.lambdify((self.sym_x, self.sym_u), P_HP_heat.subs(self.params_values), modules="numpy")
+
+    def get_continuous_linearization(self, T_ref:float, T_amb:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        # COOLING
+        if T_ref <= T_amb:
+            if xss is None:
+                xss = self.x_op_cool
+            if uss is None:
+                uss = self.u_op_cool
+
+            A = self.A_num_cool(xss, uss)
+            B = self.B_num_cool(xss, uss)
+            h = self.f_num_cool(xss, uss).reshape(-1,) - A @ xss - B @ uss
+
+         # HEATING    
+        else:
+            if xss is None:
+                xss = self.x_op_heat
+            if uss is None:
+                uss = self.u_op_heat
+
+            A = self.A_num_heat(xss, uss)
+            B = self.B_num_heat(xss, uss)
+            h = self.f_num_heat(xss, uss).reshape(-1,) - A @ xss - B @ uss
+
         C = self.C_num(xss, uss)
         D = self.D_num(xss, uss)
         l = self.g_num(xss, uss).reshape(-1,) - C @ xss - D @ uss
 
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32)
     
-    def get_discrete_linearization(self, Ts:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
-        A, B, _, C, D, _ = self.get_continuous_linearization(xss, uss)
+    def get_discrete_linearization(self, T_ref:float, T_amb:float, Ts:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        A, B, _, C, D, _ = self.get_continuous_linearization(T_ref, T_amb, xss, uss)
         A_d, B_d, C_d, D_d, _ = cont2discrete((A, B, C, D), dt=Ts, method='zoh')
-        h_d = self.f_num(xss, uss).reshape(-1,) - A_d @ xss - B_d @ uss
+
+        # COOLING
+        if T_ref <= T_amb:
+            h_d = self.f_num_cool(xss, uss).reshape(-1,) - A_d @ xss - B_d @ uss
+
+         # HEATING    
+        else:
+            h_d = self.f_num_heat(xss, uss).reshape(-1,) - A_d @ xss - B_d @ uss
+
         l_d = self.g_num(xss, uss).reshape(-1,) - C_d @ xss - D_d @ uss
         
         return A_d, B_d, h_d, C_d, D_d, l_d
     
-    def dynamics_f(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> np.ndarray:
+    def _update_HP_op_space(self, x:np.ndarray, u:np.ndarray) -> None:
+        # COOLING
+        if self.Q_top_num_cool(x, u) >= 0:
+            self.HP_in_cooling = True
+
+        # HEATING
+        else:
+            self.HP_in_cooling = False
+    
+    def _dynamics_f(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> np.ndarray:
         if LED_off:
             return np.array(self.f_num_LED_off(x, u)).flatten()
         else:
-            return np.array(self.f_num(x, u)).flatten()
+            # COOLING
+            if self.HP_in_cooling:
+                return np.array(self.f_num_cool(x, u)).flatten()
+            
+            # HEATING
+            else:
+                return np.array(self.f_num_heat(x, u)).flatten()
 
-    def observer_g(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
+    def _observer_g(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
         return np.array(self.g_num(x, u)).flatten()
 
     def discretized_update(self, u:np.ndarray, dt:float, LED_off:bool=False) -> np.ndarray:
@@ -306,12 +419,15 @@ class Model:
         # Bound input
         u_bounded = self._input_bounds(x, u)
 
+        # Check whether HP in cooling or heating
+        self._update_HP_op_space(x, u_bounded)
+
         # Runge-Kutta 4th order
         k = np.zeros((4, len(x)))
-        k[0] = self.dynamics_f(x, u_bounded, LED_off=LED_off)
-        k[1] = self.dynamics_f(x + 0.5 * dt * k[0], u_bounded, LED_off=LED_off)
-        k[2] = self.dynamics_f(x + 0.5 * dt * k[1], u_bounded, LED_off=LED_off)
-        k[3] = self.dynamics_f(x + dt * k[2], u_bounded, LED_off=LED_off)
+        k[0] = self._dynamics_f(x, u_bounded, LED_off=LED_off)
+        k[1] = self._dynamics_f(x + 0.5 * dt * k[0], u_bounded, LED_off=LED_off)
+        k[2] = self._dynamics_f(x + 0.5 * dt * k[1], u_bounded, LED_off=LED_off)
+        k[3] = self._dynamics_f(x + dt * k[2], u_bounded, LED_off=LED_off)
 
         self.x_next = x + (dt / 6.0) * (k[0] + 2 * k[1] + 2 * k[2] + k[3])
 
@@ -325,15 +441,33 @@ class Model:
         return self.x_next, self.u
     
     def get_output(self) -> np.ndarray:
-        return self.observer_g(self.x_prev, self.u)
+        return self._observer_g(self.x_prev, self.u)
     
     def get_values(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> dict:
-        # Condition for COP_cooling with P_HP close to zero
-        tol = 1e-4
-        if abs(self.P_HP_num(x, u)) < tol:
-            cop_cooling = np.nan
+        # To avoid multiple calls of _update_HP_op_space when running the simulation
+        # here no update
+
+        tol = 1e-5
+
+        # COOLING
+        if self.HP_in_cooling:
+            U_HP = self.U_HP_num_cool(x, u)
+
+            # Condition for COP with P_HP close to zero
+            if abs(self.P_HP_num_cool(x, u)) < tol:
+                COP = np.nan
+            else:
+                COP = self.COP_num_cool(x, u)
+        
+        # HEATING
         else:
-            cop_cooling = self.COP_cooling_num(x, u)
+            U_HP = self.U_HP_num_heat(x, u)
+
+            # Condition for COP with P_HP close to zero
+            if abs(self.P_HP_num_heat(x, u)) < tol:
+                COP = np.nan
+            else:
+                COP = self.COP_num_heat(x, u)
 
         # LED values
         if LED_off:
@@ -344,8 +478,8 @@ class Model:
         return {
             'U_BT':        self.U_BT_num(x, u),
             'U_oc':        self.U_oc_num(x, u),
-            'U_HP':        self.U_HP_num(x, u),
-            'COP_cooling': cop_cooling,
+            'U_HP':        U_HP,
+            'COP':         COP,
             'I_BT':        self.I_BT_num(x, u),
             'T_cell':      self.T_cell_num(x, u),
             'x_LED':       x_LED,
@@ -353,7 +487,7 @@ class Model:
     
     def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:
         # Zero order approximation for U_BT
-        U_BT = self.U_BT_num(self.x_op, self.u_op) # TODO use max and min values
+        U_BT = self.U_BT_num(self.x_op_cool, self.u_op_cool) # TODO use max and min values USING COOL IS FINE?
         I_HP_max_U_BT = (U_BT - self.S_M * delta_T) / self.R_M
         I_HP_min_U_BT = (- U_BT - self.S_M * delta_T) / self.R_M
         return I_HP_min_U_BT, I_HP_max_U_BT
@@ -395,18 +529,23 @@ class Model:
         x_bounded[2] = np.clip(x[2], 0.0, conv_temp(100.0, 'C', 'K'))
         return x_bounded
     
-    def save_linearized_model(self, directory:str, type:str, Ts:float=None) -> None:
+    def save_linearized_model(self, directory:str, type:str, T_ref:float=None, T_amb:float=None, Ts:float=None) -> None:
+        # TODO cases in which T_ref and T_amb not provided: take self
+        # Conditions on continous or discrete
         if type == 'continuous':
-            variables = self.get_continuous_linearization()
+            variables = self.get_continuous_linearization(T_ref, T_amb)
             names = ['A', 'B', 'h', 'C', 'D', 'l']
+
         elif type == 'discrete':
             if Ts is None:
                 raise ValueError("Ts must be provided for discrete linearization")
-            variables = self.get_discrete_linearization(Ts)
-            names = ['Ad', 'Bd', 'h', 'Cd', 'Dd', 'l']
+            variables = self.get_discrete_linearization(T_ref, T_amb, Ts)
+            names = ['Ad', 'Bd', 'hd', 'Cd', 'Dd', 'ld']
+
         else:
             raise ValueError("Type must be either 'continuous' or 'discrete'")
 
+        # Save matrices
         for name, variable in zip(names, variables):
             np.savetxt(f"{directory}{name}.csv", variable, delimiter=',')
 
@@ -416,8 +555,8 @@ class Model:
     
     @property
     def get_operational_state(self) -> np.ndarray:
-        return self.x_op
+        return self.x_op_cool, self.x_op_heat
     
     @property
     def get_operational_input(self) -> np.ndarray:
-        return self.u_op
+        return self.u_op_cool, self.u_op_heat

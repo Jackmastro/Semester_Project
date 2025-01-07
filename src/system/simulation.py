@@ -30,19 +30,19 @@ class Simulation:
         self.x0 = self.model.get_initial_state
 
         self.data = {
-            "time":        [],
-            "SoC":         [self.x0[0]],
-            "T_c":         [self.x0[1]],
-            "T_h":         [self.x0[2]],
-            "I_HP":        [],
-            "x_FAN":       [],
-            "T_cell":      [self.x0[1]], # Assuming equal to Tc
-            "I_BT":        [],
-            "U_BT":        [],
-            "U_oc":        [],
-            "U_HP":        [],
-            "COP_cooling": [],
-            "x_LED":       [],
+            "time":   [],
+            "x_SoC":  [self.x0[0]],
+            "T_top":  [self.x0[1]],
+            "T_bot":  [self.x0[2]],
+            "I_HP":   [],
+            "x_FAN":  [],
+            "T_cell": [self.x0[1]], # Assuming equal to Tc
+            "I_BT":   [],
+            "U_BT":   [],
+            "U_oc":   [],
+            "U_HP":   [],
+            "COP":    [],
+            "x_LED":  [],
         }
         self.data_df:pd.DataFrame = pd.DataFrame()
 
@@ -59,9 +59,9 @@ class Simulation:
 
     def _append_sim_data(self, current_time:float, x_next:np.ndarray, u_bounded:np.ndarray, values:dict) -> None:
         self.data["time"].append(current_time)
-        self.data["SoC"].append(x_next[0])
-        self.data["T_c"].append(x_next[1])
-        self.data["T_h"].append(x_next[2])
+        self.data["x_SoC"].append(x_next[0])
+        self.data["T_top"].append(x_next[1])
+        self.data["T_bot"].append(x_next[2])
         self.data["I_HP"].append(u_bounded[0])
         self.data["x_FAN"].append(u_bounded[1])
         self.data["T_cell"].append(values["T_cell"])
@@ -69,7 +69,7 @@ class Simulation:
         self.data["U_BT"].append(values["U_BT"])
         self.data["U_oc"].append(values["U_oc"])
         self.data["U_HP"].append(values["U_HP"])
-        self.data["COP_cooling"].append(values["COP_cooling"])
+        self.data["COP"].append(values["COP"])
         self.data["x_LED"].append(values["x_LED"])
 
     def run(self, with_initial_time:bool=False, initial_time_span:int=100) -> pd.DataFrame:
@@ -113,9 +113,9 @@ class Simulation:
             x_prev = x_next
 
         # Remove last element of the states and temperatures to have equal length
-        self.data["SoC"].pop()
-        self.data["T_c"].pop()
-        self.data["T_h"].pop()
+        self.data["x_SoC"].pop()
+        self.data["T_top"].pop()
+        self.data["T_bot"].pop()
         self.data["T_cell"].pop()
 
         self.data_df = pd.DataFrame(self.data)
@@ -140,9 +140,9 @@ class Simulation:
         ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
         ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
         ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
-        ax_temp.plot(results["time"], conv_temp(results["T_cell"].to_numpy(), 'K', 'C'), color=self.colors["cell"], label=r'$T_{cell}$')
-        ax_temp.plot(results["time"], conv_temp(results["T_c"].to_numpy(), 'K', 'C'), color=self.colors["cold"], label=r'$T_{c}$')
-        ax_temp.plot(results["time"], conv_temp(results["T_h"].to_numpy(), 'K', 'C'), color=self.colors["hot"], label=r'$T_{h}$')
+        ax_temp.plot(results["time"], conv_temp(results["T_cell"].to_numpy(), 'K', 'C'), color=self.colors["cell"], label=r'$T_\mathrm{cell}$')
+        ax_temp.plot(results["time"], conv_temp(results["T_top"].to_numpy(), 'K', 'C'), color=self.colors["cold"], label=r'$T_\mathrm{top}$')
+        ax_temp.plot(results["time"], conv_temp(results["T_bot"].to_numpy(), 'K', 'C'), color=self.colors["hot"], label=r'$T_\mathrm{bot}$')
         ax_temp.set_xlabel('Time [s]')
         ax_temp.set_ylabel('Temperature [°C]')
         ax_temp.set_title(title)
@@ -156,11 +156,11 @@ class Simulation:
         ax_temp.tick_params(axis='x', which='major', top=True)
         ax_temp.tick_params(axis='y', which='major', left=True, right=True)
 
-        # SoC and x_FAN (second row, first column)
+        # x_SoC and x_FAN (second row, first column)
         axs[1, 0].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 0].axvline(x=0, lw=1, color="black", label='_nolegend_')
-        axs[1, 0].plot(results["time"], results["SoC"], color=self.colors["battery"], label=r'$x_{SoC}$')
-        axs[1, 0].plot(results["time"], results["x_FAN"], color=self.colors["fan"], label=r'$x_{FAN}$')
+        axs[1, 0].plot(results["time"], results["x_SoC"], color=self.colors["battery"], label=r'$x_\mathrm{SoC}$')
+        axs[1, 0].plot(results["time"], results["x_FAN"], color=self.colors["fan"], label=r'$x_\mathrm{fan}$')
         axs[1, 0].set_xlabel('Time [s]')
         axs[1, 0].set_ylabel('Percentage [%]')
         axs[1, 0].set_title("SoC and FAN duty cycle")
@@ -179,10 +179,10 @@ class Simulation:
         axs[1, 1].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 1].axvline(x=0, lw=1, color="black", label='_nolegend_')
         axs[1, 1].axhline(y=self.model.I_rest, color=self.colors["rest"], label=r'$I_{rest}$')
-        axs[1, 1].plot(results["time"], results["x_LED"] * self.model.I_LED, color=self.colors["led"], label=r'$I_{LED}$')
-        axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_{FAN}$')
-        axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_{BT}$')
-        axs[1, 1].plot(results["time"], results["I_HP"], color=self.colors["HP"], label=r'$I_{HP}$')
+        axs[1, 1].plot(results["time"], results["x_LED"] * self.model.I_LED, color=self.colors["led"], label=r'$I_\mathrm{led}$')
+        axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_\mathrm{fan}$')
+        axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_\mathrm{bt}$')
+        axs[1, 1].plot(results["time"], results["I_HP"], color=self.colors["HP"], label=r'$I_\mathrm{hp}$')
         axs[1, 1].plot(results["time"], np.abs(results["I_HP"]) + 
                         results["x_FAN"] * self.model.I_FAN +
                         self.model.I_LED * self.model.x_LED_tot +
@@ -192,7 +192,7 @@ class Simulation:
         axs[1, 1].set_title("Currents")
         axs[1, 1].grid()
         axs[1, 1].set_xlim(xlimits)
-        axs[1, 1].set_ylim(-6.1, 6.1)
+        axs[1, 1].set_ylim(-6.1, 15.1)
         axs[1, 1].legend(loc="center right")
         axs[1, 1].xaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator())
@@ -205,10 +205,10 @@ class Simulation:
         axs[1, 2].axhline(y=0, lw=1, color="black", label='_nolegend_')
         axs[1, 2].axvline(x=0, lw=1, color="black", label='_nolegend_')
         axs[1, 2].axhline(y=self.model.U_rest, color=self.colors["rest"], label=r'$U_{rest}$')
-        axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["led"], label=r'$U_{LED}$')
-        axs[1, 2].plot(results["time"], results["x_FAN"] * self.model.U_FAN, color=self.colors["fan"], label=r'$U_{FAN}$')
-        axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["battery"], label=r'$U_{BT}$')
-        axs[1, 2].plot(results["time"], results["U_HP"], color=self.colors["HP"], label=r'$U_{HP}$')
+        axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["led"], label=r'$U_\mathrm{led}$')
+        axs[1, 2].plot(results["time"], results["x_FAN"] * self.model.U_FAN, color=self.colors["fan"], label=r'$U_\mathrm{fan}$')
+        axs[1, 2].plot(results["time"], results["U_BT"], color=self.colors["battery"], label=r'$U_\mathrm{bt}$')
+        axs[1, 2].plot(results["time"], results["U_HP"], color=self.colors["HP"], label=r'$U_\mathrm{hp}$')
         axs[1, 2].set_xlabel('Time [s]')
         axs[1, 2].set_ylabel('Voltage [V]')
         axs[1, 2].set_title("Voltages")
@@ -232,7 +232,7 @@ class Simulation:
                 raise ValueError("No data to plot")
             results = self.data_df
 
-        DT_HP_sim = results["T_h"].to_numpy() - results["T_c"].to_numpy()
+        DT_HP_sim = results["T_bot"].to_numpy() - results["T_top"].to_numpy()
         I_HP_sim = results["I_HP"].to_numpy()
 
         # Arrows
@@ -243,13 +243,7 @@ class Simulation:
         y_vec_min, y_vec_max = self.model.get_constraints_U_BT2I_HP(x_vec)
 
         ### Color gradient for COP
-        COP_cooling = results["COP_cooling"].to_numpy()
-
-        # Get negative current: separate between cooling and heating
-        mask = I_HP_sim < 0
-
-        # Correct COP with heating parts
-        COP = COP_cooling.copy() + mask
+        COP = results["COP"].to_numpy()
 
         cmap = LinearSegmentedColormap.from_list('COP_colormap', ['red', 'green'])
         norm = Normalize(vmin=0, vmax=5)
