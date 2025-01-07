@@ -343,26 +343,34 @@ class Model:
 
     def get_continuous_linearization(self, T_ref:float, T_amb:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
         # COOLING
-        if T_ref <= T_amb:
-            if xss is None:
-                xss = self.x_op_cool
-            if uss is None:
-                uss = self.u_op_cool
+        # if T_ref <= T_amb:
+        #     if xss is None:
+        #         xss = self.x_op_cool
+        #     if uss is None:
+        #         uss = self.u_op_cool
 
-            A = self.A_num_cool(xss, uss)
-            B = self.B_num_cool(xss, uss)
-            h = self.f_num_cool(xss, uss).reshape(-1,) - A @ xss - B @ uss
+        #     A = self.A_num_cool(xss, uss)
+        #     B = self.B_num_cool(xss, uss)
+        #     h = self.f_num_cool(xss, uss).reshape(-1,) - A @ xss - B @ uss
 
-         # HEATING    
-        else:
-            if xss is None:
-                xss = self.x_op_heat
-            if uss is None:
-                uss = self.u_op_heat
+        #  # HEATING    
+        # else:
+        #     if xss is None:
+        #         xss = self.x_op_heat
+        #     if uss is None:
+        #         uss = self.u_op_heat
 
-            A = self.A_num_heat(xss, uss)
-            B = self.B_num_heat(xss, uss)
-            h = self.f_num_heat(xss, uss).reshape(-1,) - A @ xss - B @ uss
+        #     A = self.A_num_heat(xss, uss)
+        #     B = self.B_num_heat(xss, uss)
+        #     h = self.f_num_heat(xss, uss).reshape(-1,) - A @ xss - B @ uss
+        if xss is None:
+            xss = self.x_op_cool
+        if uss is None:
+            uss = self.u_op_cool
+
+        A = self.A_num_cool(xss, uss)
+        B = self.B_num_cool(xss, uss)
+        h = self.f_num_cool(xss, uss).reshape(-1,) - A @ xss - B @ uss
 
         C = self.C_num(xss, uss)
         D = self.D_num(xss, uss)
@@ -393,7 +401,7 @@ class Model:
 
         # HEATING
         else:
-            self.HP_in_cooling = False
+            self.HP_in_cooling = True
     
     def _dynamics_f(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> np.ndarray:
         if LED_off:
