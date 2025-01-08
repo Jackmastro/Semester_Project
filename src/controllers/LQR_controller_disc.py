@@ -5,13 +5,13 @@ from scipy.linalg import solve_discrete_are
 
 class LQRControllerDisc(ControllerBase):
     """ Infinite horizon discrete LQR controller """
-    def __init__(self, T_top_ref:float, T_cell_ref:float, A_d:np.ndarray, B_d:np.ndarray, Q:np.ndarray, R:np.ndarray, dt:float) -> None:
+    def __init__(self, T_top_ref:float, T_cell_ref:float, A_d:np.ndarray, B_d:np.ndarray, Q:np.ndarray, R:np.ndarray, sampling_time:float) -> None:
         
         self.u_prev = np.zeros((2, 1))
-        self.dt = dt
+        self.sampling_time = sampling_time
         self.last_update_time = None
 
-        assert dt > 0, "dt must be positive"
+        assert sampling_time > 0, "sampling_time must be positive"
         # TODO check dimensions, (semi) pos def
 
         self.setpoint = T_cell_ref # for plotting
@@ -26,9 +26,9 @@ class LQRControllerDisc(ControllerBase):
 
     def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
         """
-        Returns the control input only when the time increment matches dt.
+        Returns the control input only when the time increment matches sampling_time.
         """
-        if self.last_update_time is None or (current_time - self.last_update_time) >= self.dt:
+        if self.last_update_time is None or (current_time - self.last_update_time) >= self.sampling_time:
             self.last_update_time = current_time
             self.u_prev = self.K @ (x - self.x_inf)
 
