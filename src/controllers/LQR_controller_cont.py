@@ -3,12 +3,12 @@ import numpy as np
 from scipy.linalg import solve_continuous_are
 
 
-class LQRController_cont(ControllerBase):
+class LQRControllerCont(ControllerBase):
     """ Infinite horizon LQR controller """
     def __init__(self, T_top_ref:float, T_cell_ref:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
         # TODO check dimensions, (semi) pos def
 
-        self.setpoint = T_cell_ref
+        self.setpoint = T_cell_ref # for plotting
 
         self.x_inf = np.array([1,
                                T_top_ref,
