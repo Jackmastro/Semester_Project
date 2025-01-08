@@ -21,7 +21,7 @@ class Simulation:
 
         self.dt = dt
         self.time_span = time_span
-        self.time_steps = int(self.time_span / self.dt)
+        self.time_steps = int(self.time_span / self.dt) + 1 # Python counting
 
         # Placeholder for plots
         self.initial_time_span = 0
@@ -82,11 +82,11 @@ class Simulation:
 
             self.initial_time_span = -initial_time_span
 
-            self.initial_time_steps = int(initial_time_span / self.dt)
+            self.initial_time_steps = int(initial_time_span / self.dt) + 1 # Python counting
             u = np.array([0.0,
                           0.0])
 
-            for t in reversed(range(1, self.initial_time_steps + 1)):
+            for t in reversed(range(1, self.initial_time_steps)): # at 0 starts the simulation with LEDs
                 current_time = -t * self.dt
 
                 # Advance system states
@@ -166,7 +166,7 @@ class Simulation:
         axs[1, 0].plot(results["time"], results["x_FAN"], color=self.colors["fan"], label=r'$x_\mathrm{fan}$')
         axs[1, 0].set_xlabel('Time [s]')
         axs[1, 0].set_ylabel('Percentage [%]')
-        axs[1, 0].set_title("SoC and FAN duty cycle")
+        axs[1, 0].set_title("SoC and fan duty cycle")
         axs[1, 0].grid()
         axs[1, 0].set_xlim(xlimits)
         axs[1, 0].set_ylim(-0.1, 1.1)
@@ -195,7 +195,7 @@ class Simulation:
         axs[1, 1].set_title("Currents")
         axs[1, 1].grid()
         axs[1, 1].set_xlim(xlimits)
-        axs[1, 1].set_ylim(-6.1, 15.1)
+        axs[1, 1].set_ylim(-6.1, 6.1)
         axs[1, 1].legend(loc="center right")
         axs[1, 1].xaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator())

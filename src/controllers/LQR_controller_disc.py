@@ -24,12 +24,12 @@ class LQRControllerDisc(ControllerBase):
         self.P = solve_discrete_are(A_d, B_d, Q, R)
         self.K = -np.linalg.inv(R + B_d.T @ self.P @ B_d) @ B_d.T @ self.P @ A_d
 
-    def get_control_input(self, current_time: float, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
         """
-        Returns the control input only when the time increment matches `dt`.
+        Returns the control input only when the time increment matches dt.
         """
         if self.last_update_time is None or (current_time - self.last_update_time) >= self.dt:
             self.last_update_time = current_time
             self.u_prev = self.K @ (x - self.x_inf)
-        
+
         return self.u_prev
