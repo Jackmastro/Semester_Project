@@ -11,17 +11,17 @@ from controllers import ControllerBase
 
 
 class Simulation:
-    def __init__(self, model:Model, controller:ControllerBase, dt:float, time_span:float) -> None:
+    def __init__(self, model:Model, controller:ControllerBase, dt_sim:float, time_span:float) -> None:
         self.model = model
         self.controller = controller
 
-        assert dt > 0, "dt must be greater than 0"
+        assert dt_sim > 0, "dt_sim must be greater than 0"
         assert time_span > 0, "time_span must be greater than 0"
-        assert time_span >= dt, "time_span must be greater than or equal to dt"
+        assert time_span >= dt_sim, "time_span must be greater than or equal to dt_sim"
 
-        self.dt = dt
+        self.dt_sim = dt_sim
         self.time_span = time_span
-        self.time_steps = int(self.time_span / self.dt) + 1 # Python counting
+        self.time_steps = int(self.time_span / self.dt_sim) + 1 # Python counting
 
         # Placeholder for plots
         self.initial_time_span = 0
@@ -78,19 +78,19 @@ class Simulation:
         # Initial time steps
         if with_initial_time:
             assert initial_time_span > 0, "initial_time_span must be greater than 0"
-            assert initial_time_span >= self.dt, "initial_time_span must be greater than or equal to dt"
+            assert initial_time_span >= self.dt_sim, "initial_time_span must be greater than or equal to dt_sim"
 
             self.initial_time_span = -initial_time_span
 
-            self.initial_time_steps = int(initial_time_span / self.dt) + 1 # Python counting
+            self.initial_time_steps = int(initial_time_span / self.dt_sim) + 1 # Python counting
             u = np.array([0.0,
                           0.0])
 
             for t in reversed(range(1, self.initial_time_steps)): # at 0 starts the simulation with LEDs
-                current_time = -t * self.dt
+                current_time = -t * self.dt_sim
 
                 # Advance system states
-                x_next, u_bounded = self.model.discretized_update(u, self.dt, LED_off=True)
+                x_next, u_bounded = self.model.discretized_update(u, self.dt_sim, LED_off=True)
 
                 # Get internal values
                 values = self.model.get_values(x_prev, u_bounded, LED_off=True)
@@ -99,14 +99,14 @@ class Simulation:
 
         # Main time steps
         for t in range(self.time_steps):
-            current_time = t * self.dt
+            current_time = t * self.dt_sim
 
             y = self.model.get_output()
 
             u = self.controller.get_control_input(current_time, x_prev, y)
 
             # Advance system states
-            x_next, u_bounded = self.model.discretized_update(u, self.dt)
+            x_next, u_bounded = self.model.discretized_update(u, self.dt_sim)
 
             # Get internal values
             values = self.model.get_values(x_prev, u_bounded)
@@ -165,7 +165,7 @@ class Simulation:
         axs[1, 0].plot(results["time"], results["x_SoC"], color=self.colors["battery"], label=r'$x_\mathrm{SoC}$')
         axs[1, 0].plot(results["time"], results["x_FAN"], color=self.colors["fan"], label=r'$x_\mathrm{fan}$')
         axs[1, 0].set_xlabel('Time [s]')
-        axs[1, 0].set_ylabel('Percentage [%]')
+        axs[1, 0].set_ylabel('Percentage [-]')
         axs[1, 0].set_title("SoC and fan duty cycle")
         axs[1, 0].grid()
         axs[1, 0].set_xlim(xlimits)

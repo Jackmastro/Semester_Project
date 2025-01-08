@@ -1,5 +1,6 @@
 from .controller_base import ControllerBase
 import numpy as np
+import pandas as pd
 import cvxpy as cp
 from classes import Model
 
@@ -40,8 +41,8 @@ class MPCController(ControllerBase):
 
         self._init_optimization_problem()
 
-        # Initialize open-loop input
-        self.open_loop_u = np.zeros((self.m, self.K))
+        self.update_open_loop_input(current_time=0)
+        self.last_update_time = None
 
     def _init_constraints(self) -> None:
         # I_HP constraints
@@ -57,10 +58,10 @@ class MPCController(ControllerBase):
         self.x0_param = cp.Parameter(self.n)
 
         # Placeholders for parametrization
-        # self.A_d   = cp.Parameter((self.n, self.n)) # maybe not needed: only for online linearization
-        # self.B_d   = cp.Parameter((self.n, self.m))
-        # self.h_d   = cp.Parameter(self.n)
-        # self.x_inf = cp.Parameter(self.n)
+        # self.A_d_param   = cp.Parameter((self.n, self.n)) # maybe not needed: only for online linearization
+        # self.B_d_param   = cp.Parameter((self.n, self.m))
+        # self.h_d_param   = cp.Parameter(self.n)
+        # self.x_inf_param = cp.Parameter(self.n)
 
         # Initialize cost and constraints (parametrized)
         self.cost = 0
@@ -78,8 +79,8 @@ class MPCController(ControllerBase):
                 self.i_var[0, k]   <= self.I_max,
                 self.i_var[1, k]   >= 0, # fan
                 self.i_var[1, k]   <= 1,
-                self.x_var[0, k]   >= 0, # SoC
-                self.x_var[0, k]   <= 1,
+                # self.x_var[0, k]   >= 0, # SoC
+                # self.x_var[0, k]   <= 1,
                 ]
         
         # Terminal cost or constraint for stability
@@ -93,20 +94,41 @@ class MPCController(ControllerBase):
             print("Is the problem DCP compliant?", self.problem.is_dcp())
 
     # def _update_linearized_matrices(self, A_d:np.ndarray, B_d:np.ndarray, h_d:np.ndarray) -> None:
-    #     self.A_d.value = A_d
-    #     self.B_d.value = B_d
-    #     self.h_d.value = h_d
+    #     self.A_d_param.value = A_d
+    #     self.B_d_param.value = B_d
+    #     self.h_d_param.value = h_d
+
+    def update_open_loop_input(self, current_time:float, optimal_input_values:np.ndarray=None) -> None:
+        # Extend time to one before current_time
+        time_index = np.hstack((current_time - self.discret_time,
+                                np.arange(current_time,
+                                          current_time + self.K * self.discret_time,
+                                          self.discret_time)))
+        
+        # Initialize with zeros
+        if optimal_input_values is None:
+            self.open_loop_u = pd.DataFrame(np.zeros((time_index.shape[0], self.m)), columns=['I_HP', 'x_FAN'], index=time_index)
+        
+        # Update with optimal values
+        else:
+            opt_input = np.hstack((optimal_input_values[:, 0].reshape(-1, 1),
+                                   optimal_input_values)).T
+            self.open_loop_u = pd.DataFrame(opt_input, columns=['I_HP', 'x_FAN'], index=time_index)
+
+    def get_open_loop_u(self, current_time:float) -> np.ndarray:
+        return self.open_loop_u.loc[self.open_loop_u.index <= current_time].iloc[-1]
 
     def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
         if self.print_output:
-            print(f"--  Simulation time: {current_time} min  -  Infeasible solutions: {self.num_infeas} of which None output: {self.num_None_output}  --")
+            print(f"--  Simulation time: {current_time} sec  -  Infeasible solutions: {self.num_infeas} of which None output: {self.num_None_output}  --")
 
         # # Update linearized matrices
         # if current_time == 0:
+        #     self.x_inf_param = self.x_inf
         #     self._update_linearized_matrices(self.A_d, self.B_d, self.h_d)
         
         # Optimization at every sampling time
-        if (current_time % self.sampling_time) == 0:
+        if self.last_update_time is None or (current_time - self.last_update_time) >= self.sampling_time:
 
             self.x0_param.value = x
         
@@ -131,25 +153,29 @@ class MPCController(ControllerBase):
                 except:
                     self.num_infeas += 1
                     
-                    control_input = self.open_loop_u[:, current_time % self.sampling_time]
+                    control_input = self.get_open_loop_u(current_time)
 
                     if self.print_output:
                         print(f"Forced control output: {control_input}")
                     return control_input
             
             # Problem solved
-            control_input = self.i_var.value
+            control_input = self.i_var[:, 0].value
 
             # Save open-loop input
-            self.open_loop_u = np.repeat(self.i_var[:].value, self.discret_time)
+            self.update_open_loop_input(current_time, self.i_var.value)
 
             if self.print_output:
                 print(f"Optimized control output: {control_input}")
+
+            # Update last_update_time
+            self.last_update_time = current_time
+
             return control_input
         
         # Open-loop control
         else:
-            control_input = self.open_loop_u[current_time % self.sampling_time]
+            control_input = self.get_open_loop_u(current_time)
             
             if self.print_output:
                 print(f"Open-loop control output: {control_input}")
