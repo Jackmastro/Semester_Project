@@ -460,33 +460,44 @@ class Model:
     def get_values(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> dict:
         # To avoid multiple calls of _update_HP_op_space when running the simulation, here no update of HP_in_cooling
 
-        tol = 1e-5
-
-        # COOLING
-        if self.HP_in_cooling:
-            U_HP = self.U_HP_num_cool(x, u)
-
-            # Condition for COP with P_HP close to zero
-            if abs(self.P_HP_num_cool(x, u)) < tol:
-                COP = np.nan
-            else:
-                COP = self.COP_num_cool(x, u)
-        
-        # HEATING
-        else:
-            U_HP = self.U_HP_num_heat(x, u)
-
-            # Condition for COP with P_HP close to zero
-            if abs(self.P_HP_num_heat(x, u)) < tol:
-                COP = np.nan
-            else:
-                COP = self.COP_num_heat(x, u)
-
-        # LED values
+        # Negative times
         if LED_off:
             x_LED = 0.0
+            COP = np.nan
+
+            # COOLING
+            if self.HP_in_cooling:
+                U_HP = self.U_HP_num_cool(x, u)
+            
+            # HEATING
+            else:
+                U_HP = self.U_HP_num_heat(x, u)
+        
+        # Simulation
         else:
             x_LED = self.x_LED_tot
+
+            tol = 1e-5
+
+            # COOLING
+            if self.HP_in_cooling:
+                U_HP = self.U_HP_num_cool(x, u)
+
+                # Condition for COP with P_HP close to zero
+                if abs(self.P_HP_num_cool(x, u)) < tol:
+                    COP = np.nan
+                else:
+                    COP = self.COP_num_cool(x, u)
+            
+            # HEATING
+            else:
+                U_HP = self.U_HP_num_heat(x, u)
+
+                # Condition for COP with P_HP close to zero
+                if abs(self.P_HP_num_heat(x, u)) < tol:
+                    COP = np.nan
+                else:
+                    COP = self.COP_num_heat(x, u)
 
         return {
             'U_BT':        self.U_BT_num(x, u),

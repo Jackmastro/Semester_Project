@@ -8,6 +8,7 @@ from scipy.constants import convert_temperature as conv_temp
 
 from classes import Model
 from controllers import ControllerBase
+from img import save_plot2pdf
 
 
 class Simulation:
@@ -125,7 +126,7 @@ class Simulation:
 
         return self.data_df
     
-    def plot_time_results(self, title:str="", results:pd.DataFrame=None) -> None:
+    def plot_time_results(self, title:str="", save_plot:bool=False, filename:str=None, results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -227,9 +228,12 @@ class Simulation:
         axs[1, 2].tick_params(axis='y', which='major', left=True, right=True)
 
         plt.tight_layout()
+        if save_plot:
+            filename = "sim_" + filename
+            save_plot2pdf(filename, fig)
         plt.show()
 
-    def plot_current_temperature(self, title:str="", results:pd.DataFrame=None) -> None:
+    def plot_current_temperature(self, title:str="", save_plot:bool=False, filename:str=None, results:pd.DataFrame=None) -> None:
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -262,27 +266,42 @@ class Simulation:
         ax.axvline(x=0, lw=1, color='black', label='_nolegend_')
         ax.add_collection(lc)
 
-        for i in range(0, len(DT_HP_sim) - arrow_step, arrow_step):
-            ax.arrow(
-                DT_HP_sim[i], I_HP_sim[i],
-                DT_HP_sim[i + 1] - DT_HP_sim[i], I_HP_sim[i + 1] - I_HP_sim[i],
-                head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
-            )
+        # for i in range(0, len(DT_HP_sim) - arrow_step, arrow_step):
+        #     ax.arrow(
+        #         DT_HP_sim[i], I_HP_sim[i],
+        #         DT_HP_sim[i + 1] - DT_HP_sim[i], I_HP_sim[i + 1] - I_HP_sim[i],
+        #         head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
+        #     )
 
-        ax.plot(x_vec, y_vec_min, color='black', linestyle=':', label=r'$U_{max}$')
-        ax.plot(x_vec, y_vec_max, color='black', linestyle=':')
+        x_lim_max = self.model.DeltaT_max * 1.1
+        y_lim_max = self.model.I_HP_max * 1.1
+
+        ax.plot(x_vec, y_vec_max, color='black', linestyle=':', label=r'$U_{max}$')
+        ax.fill_between(x_vec, y_vec_max, y_lim_max, color='gray', alpha=0.5)
+
+        ax.plot(x_vec, y_vec_min, color='black', linestyle=':')
+        ax.fill_between(x_vec, y_vec_min, -y_lim_max, color='gray', alpha=0.5)
+
         ax.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
+        ax.fill_between(x_vec, self.model.I_HP_max, y_lim_max, color='gray', alpha=0.5)
+
         ax.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
+        ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color='gray', alpha=0.5)
+
         ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
+        ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color='gray', alpha=0.5)
+        
         ax.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
+        ax.fill_betweenx([-y_lim_max, y_lim_max], -self.model.DeltaT_max, -x_lim_max, color='gray', alpha=0.5)
 
         # Configure plot
-        ax.set_xlim(-self.model.DeltaT_max * 1.1, self.model.DeltaT_max * 1.1)
-        ax.set_ylim(-self.model.I_HP_max * 1.1, self.model.I_HP_max * 1.1)
-        ax.set_xlabel(r'$\Delta T \; [°C]$')
+        ax.set_xlim(-x_lim_max, x_lim_max)
+        ax.set_ylim(-y_lim_max, y_lim_max)
+        ax.set_xlabel(r'$\Delta T_\mathrm{HP} \; [°C]$')
         ax.set_ylabel(r'$I_\mathrm{HP} \; [A]$')
         ax.set_title(title)
-        ax.legend()
+        ax.legend(loc='upper left')
+        # ax.legend()
         ax.grid()
         ax.xaxis.set_minor_locator(ticker.AutoMinorLocator())
         ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
@@ -296,4 +315,7 @@ class Simulation:
         ax.spines['left'].set_visible(True)
         plt.colorbar(lc, ax=ax, label='COP')
         
+        if save_plot:
+            filename = "I_DT_" + filename
+            save_plot2pdf(filename, fig)
         plt.show()
