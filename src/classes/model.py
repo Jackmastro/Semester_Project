@@ -28,7 +28,8 @@ class Model:
         self.x0 = x0
         self.x_prev = x0
         self.x_next = None
-        self.u = np.array([0.0, 0.0]) # needed for symbolic initialization
+        self.u = np.array([0.0,
+                           0.0]) # needed for symbolic initialization
 
         # Parameters initialization
         self._init_params(LEDparams, T_amb0)
@@ -61,10 +62,10 @@ class Model:
             'K_M':          self.K_M,
             'cp_Al':        self.cp_Al, # Thermal
             'T_amb':        self.T_amb,
-            'm_top':          self.m_2 + self.m_4,
-            'm_bot':          self.m_1,
+            'm_top':        self.m_2 + self.m_4,
+            'm_bot':        self.m_1,
             'R_floor':      self.R_floor,
-            'R_c_cell':     self.R_c_cell,
+            'R_top_cell':   self.R_top_cell,
             'R_cell_amb':   self.R_cell_amb,
         }
 
@@ -105,7 +106,7 @@ class Model:
 
         # Top thermal parameters - Diffuser
         # TODO estimation of parameters
-        self.R_c_cell = 5.0 # K/W
+        self.R_top_cell = 5.0 # K/W
         self.R_cell_amb = 25.0 # K/W
 
         # Top Al thermal parameters
@@ -188,7 +189,7 @@ class Model:
         cp_Al = sp.symbols('cp_Al')
 
         ## Top static
-        R_c_cell, R_cell_amb = sp.symbols('R_c_cell, R_cell_amb')
+        R_top_cell, R_cell_amb = sp.symbols('R_top_cell, R_cell_amb')
 
         ## Top dynamic
         m_top = sp.symbols('m_top')
@@ -205,7 +206,7 @@ class Model:
         R_FAN_alpha = q + m * x_FAN # K/W
 
         ## Top static
-        Q_LED_cell = (T_top - T_amb) / (R_cell_amb + R_c_cell) # W
+        Q_LED_cell = (T_top - T_amb) / (R_cell_amb + R_top_cell) # W
 
         ## Bottom static
         R_eq_bottom = (R_floor * R_FAN_alpha) / (R_floor + R_FAN_alpha) # K/W equivalent parallel resistance
@@ -378,9 +379,14 @@ class Model:
 
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32)
     
-    def get_discrete_linearization(self, T_ref:float, T_amb:float, Ts:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+    def get_discrete_linearization(self, T_ref:float, T_amb:float, dt_d:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        if xss is None:
+            xss = self.x_op_cool
+        if uss is None:
+            uss = self.u_op_cool # TODO do only once instead of twice
+
         A, B, _, C, D, _ = self.get_continuous_linearization(T_ref, T_amb, xss, uss)
-        A_d, B_d, C_d, D_d, _ = cont2discrete((A, B, C, D), dt=Ts, method='zoh')
+        A_d, B_d, C_d, D_d, _ = cont2discrete((A, B, C, D), dt=dt_d, method='zoh')
 
         # COOLING
         if T_ref <= T_amb:
@@ -392,7 +398,7 @@ class Model:
 
         l_d = self.g_num(xss, uss).reshape(-1,) - C_d @ xss - D_d @ uss
         
-        return A_d, B_d, h_d, C_d, D_d, l_d
+        return np.array(A_d).astype(np.float32), np.array(B_d).astype(np.float32), np.array(h_d).astype(np.float32), np.array(C_d).astype(np.float32), np.array(D_d).astype(np.float32), np.array(l_d).astype(np.float32)
     
     def _update_HP_op_space(self, x:np.ndarray, u:np.ndarray) -> None:
         # COOLING
@@ -452,8 +458,7 @@ class Model:
         return self._observer_g(self.x_prev, self.u)
     
     def get_values(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> dict:
-        # To avoid multiple calls of _update_HP_op_space when running the simulation
-        # here no update
+        # To avoid multiple calls of _update_HP_op_space when running the simulation, here no update of HP_in_cooling
 
         tol = 1e-5
 

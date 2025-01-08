@@ -1,25 +1,22 @@
 from .controller_base import ControllerBase
 import numpy as np
 from scipy.linalg import solve_continuous_are
-from classes import Model
+
 
 class LQRController_cont(ControllerBase):
     """ Infinite horizon LQR controller """
-    def __init__(self, model:Model, setpoint_T_cell:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
-        self.setpoint = setpoint_T_cell
-        
-        # Calculate offset for converting Tc to T_cell
-        R_frac = (model.R_c_cell + model.R_cell_amb) / model.R_cell_amb
-        self.Tc_inf = (setpoint_T_cell - model.T_amb) * R_frac + model.T_amb
+    def __init__(self, T_top_ref:float, T_cell_ref:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
+        # TODO check dimensions, (semi) pos def
 
-        self.x_bar = np.array([1,
-                               self.Tc_inf,
-                               model.T_amb])
+        self.setpoint = T_cell_ref
+
+        self.x_inf = np.array([1,
+                               T_top_ref,
+                               T_top_ref]) # TODO check if soc and bot make sense
 
         # Solve Riccati equation
         self.P = solve_continuous_are(A, B, Q, R)
         self.K = -np.linalg.inv(R) @ B.T @ self.P
 
-    def get_control_input(self, x:np.ndarray, y:np.ndarray) -> np.ndarray:
-        x_tmp = x - self.x_bar
-        return self.K @ (x - self.x_bar)
+    def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
+        return self.K @ (x - self.x_inf)

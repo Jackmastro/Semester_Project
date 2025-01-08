@@ -75,6 +75,7 @@ class Simulation:
     def run(self, with_initial_time:bool=False, initial_time_span:int=100) -> pd.DataFrame:
         x_prev = self.x0
 
+        # Initial time steps
         if with_initial_time:
             assert initial_time_span > 0, "initial_time_span must be greater than 0"
             assert initial_time_span >= self.dt, "initial_time_span must be greater than or equal to dt"
@@ -82,7 +83,8 @@ class Simulation:
             self.initial_time_span = -initial_time_span
 
             self.initial_time_steps = int(initial_time_span / self.dt)
-            u = np.array([0.0, 0.0])
+            u = np.array([0.0,
+                          0.0])
 
             for t in reversed(range(1, self.initial_time_steps + 1)):
                 current_time = -t * self.dt
@@ -95,12 +97,13 @@ class Simulation:
 
                 self._append_sim_data(current_time, x_next, u_bounded, values)
 
+        # Main time steps
         for t in range(self.time_steps):
             current_time = t * self.dt
 
             y = self.model.get_output()
 
-            u = self.controller.get_control_input(x_prev, y)
+            u = self.controller.get_control_input(current_time, x_prev, y)
 
             # Advance system states
             x_next, u_bounded = self.model.discretized_update(u, self.dt)
@@ -183,10 +186,10 @@ class Simulation:
         axs[1, 1].plot(results["time"], results["x_FAN"] * self.model.I_FAN, color=self.colors["fan"], label=r'$I_\mathrm{fan}$')
         axs[1, 1].plot(results["time"], results["I_BT"], color=self.colors["battery"], label=r'$I_\mathrm{bt}$')
         axs[1, 1].plot(results["time"], results["I_HP"], color=self.colors["HP"], label=r'$I_\mathrm{hp}$')
-        axs[1, 1].plot(results["time"], np.abs(results["I_HP"]) + 
-                        results["x_FAN"] * self.model.I_FAN +
-                        self.model.I_LED * self.model.x_LED_tot +
-                        self.model.I_rest, color='black', linestyle='--', label=r'$I_{tot}$')
+        # axs[1, 1].plot(results["time"], np.abs(results["I_HP"]) + 
+        #                 results["x_FAN"] * self.model.I_FAN +
+        #                 self.model.I_LED * self.model.x_LED_tot +
+        #                 self.model.I_rest, color='black', linestyle='--', label=r'$I_{tot}$')
         axs[1, 1].set_xlabel('Time [s]')
         axs[1, 1].set_ylabel('Current [A]')
         axs[1, 1].set_title("Currents")

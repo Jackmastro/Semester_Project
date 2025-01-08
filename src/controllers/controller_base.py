@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
+
 class ControllerBase(ABC):
 
     def __init__(self):
@@ -8,5 +9,5 @@ class ControllerBase(ABC):
         super().__init__()
     
     @abstractmethod
-    def get_control_input(self, x:np.ndarray, y:np.ndarray) -> np.ndarray:
+    def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
         pass
