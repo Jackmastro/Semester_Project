@@ -19,7 +19,7 @@ class LEDparams:
         # Convert to numpy array
         specific_radiant_power = np.array([radiant_power_dict[color] for color in radiant_power_dict.keys()]) # mW/cm^2
 
-        # Single hole
+        # Radiant power in W for single hole
         diameter = 6.7 # mm
         cross_section = np.pi * (diameter/10/2)**2 # cm^2
         self.radiant_power = cross_section * specific_radiant_power / 1000 # W
@@ -37,6 +37,11 @@ class LEDparams:
         self.x_LED_tot = np.sum(x_matrix_scaled) # total duty cycle assuming equal current for all LEDs
 
         return self.x_LED_tot, self.I_LED, self.P_rad
+    
+    def get_x_from_P_rad(self, P_rad:float) -> np.ndarray:
+        """ Returns the duty cycle for the given radiant power"""
+        x_LED = self.dimensions[0] * P_rad / sum(self.radiant_power) # total duty cycle assuming equal current and x for all LEDs
+        return x_LED
 
 ##########################################################################
 if __name__ == '__main__':
