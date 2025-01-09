@@ -196,7 +196,7 @@ class Simulation:
         axs[1, 1].set_title("Currents")
         axs[1, 1].grid()
         axs[1, 1].set_xlim(xlimits)
-        axs[1, 1].set_ylim(bottom=-6.1)
+        # axs[1, 1].set_ylim(bottom=-6.1)
         axs[1, 1].legend(loc="center right")
         axs[1, 1].xaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator())

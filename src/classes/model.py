@@ -8,6 +8,7 @@ from scipy.signal import cont2discrete
 from classes.LED_params import LEDparams
 
 from data import load_coefficients
+from output_notebooks import save_matrices2csv
 
 class Model:
     def __init__(self, LEDparams:LEDparams, x0:np.ndarray, T_amb0:float=conv_temp(25.0, 'C', 'K')) -> None:
@@ -343,6 +344,8 @@ class Model:
         self.P_HP_num_heat = sp.lambdify((self.sym_x, self.sym_u), P_HP_heat.subs(self.params_values), modules="numpy")
 
     def get_continuous_linearization(self, T_ref:float, T_amb:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        self.T_cell_ref = T_ref
+        
         # COOLING
         # if T_ref <= T_amb:
         #     if xss is None:
@@ -553,8 +556,12 @@ class Model:
         x_bounded[2] = np.clip(x[2], 0.0, conv_temp(100.0, 'C', 'K'))
         return x_bounded
     
-    def save_linearized_model(self, directory:str, type:str, T_ref:float=None, T_amb:float=None, Ts:float=None) -> None:
-        # TODO cases in which T_ref and T_amb not provided: take self
+    def save_linearized_model(self, type:str, T_ref:float=None, T_amb:float=None, Ts:float=None) -> None:
+        if T_ref is None:
+            T_ref = self.T_cell_ref # TODO could be problematic if not given in __init__
+        if T_amb is None:
+            T_amb = self.T_amb
+
         # Conditions on continous or discrete
         if type == 'continuous':
             variables = self.get_continuous_linearization(T_ref, T_amb)
@@ -570,8 +577,7 @@ class Model:
             raise ValueError("Type must be either 'continuous' or 'discrete'")
 
         # Save matrices
-        for name, variable in zip(names, variables):
-            np.savetxt(f"{directory}{name}.csv", variable, delimiter=',')
+        save_matrices2csv(names, variables)
 
     @property
     def get_initial_state(self) -> np.ndarray:
