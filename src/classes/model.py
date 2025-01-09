@@ -225,7 +225,7 @@ class Model:
 
         ## Battery
         # I_BT = (U_oc + R_BT*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_BT*I_LED*x_LED*U_oc + (R_BT*I_LED*x_LED)**2 - 4*R_BT*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_BT) # A
-        I_BT = I_LED*x_LED + I_FAN*x_FAN + sp.sqrt(I_HP**2) + I_rest # A
+        I_BT = (I_LED*x_LED + I_FAN*x_FAN + sp.sqrt(I_HP**2) + I_rest) / n # A
         U_BT = U_oc - R_BT * I_BT # V
         P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))

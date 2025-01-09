@@ -142,8 +142,8 @@ class Simulation:
         ax_temp = fig.add_subplot(2, 1, 1)  # Create a new subplot spanning the top row
         ax_temp.axhline(y=0, lw=1, color="black", label='_nolegend_')
         ax_temp.axvline(x=0, lw=1, color="black", label='_nolegend_')
-        ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label='Setpoint')
-        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label='Ambient')
+        ax_temp.axhline(y=conv_temp(self.controller.setpoint, 'K', 'C'), color='black', linestyle='--', label=r'$T_\mathrm{cell,ref}$')
+        ax_temp.axhline(y=conv_temp(self.model.T_amb, 'K', 'C'), color='gray', linestyle='-.', label=r'$T_\mathrm{amb}$')
         ax_temp.plot(results["time"], conv_temp(results["T_cell"].to_numpy(), 'K', 'C'), color=self.colors["cell"], label=r'$T_\mathrm{cell}$')
         ax_temp.plot(results["time"], conv_temp(results["T_top"].to_numpy(), 'K', 'C'), color=self.colors["cold"], label=r'$T_\mathrm{top}$')
         ax_temp.plot(results["time"], conv_temp(results["T_bot"].to_numpy(), 'K', 'C'), color=self.colors["hot"], label=r'$T_\mathrm{bot}$')
