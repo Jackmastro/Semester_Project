@@ -196,7 +196,7 @@ class Simulation:
         axs[1, 1].set_title("Currents")
         axs[1, 1].grid()
         axs[1, 1].set_xlim(xlimits)
-        axs[1, 1].set_ylim(-6.1, 6.1)
+        axs[1, 1].set_ylim(bottom=-6.1)
         axs[1, 1].legend(loc="center right")
         axs[1, 1].xaxis.set_minor_locator(ticker.AutoMinorLocator())
         axs[1, 1].yaxis.set_minor_locator(ticker.AutoMinorLocator())
@@ -266,12 +266,12 @@ class Simulation:
         ax.axvline(x=0, lw=1, color='black', label='_nolegend_')
         ax.add_collection(lc)
 
-        # for i in range(0, len(DT_HP_sim) - arrow_step, arrow_step):
-        #     ax.arrow(
-        #         DT_HP_sim[i], I_HP_sim[i],
-        #         DT_HP_sim[i + 1] - DT_HP_sim[i], I_HP_sim[i + 1] - I_HP_sim[i],
-        #         head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
-        #     )
+        for i in range(0, len(DT_HP_sim) - arrow_step, arrow_step):
+            ax.arrow(
+                DT_HP_sim[i], I_HP_sim[i],
+                DT_HP_sim[i + 1] - DT_HP_sim[i], I_HP_sim[i + 1] - I_HP_sim[i],
+                head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
+            )
 
         x_lim_max = self.model.DeltaT_max * 1.1
         y_lim_max = self.model.I_HP_max * 1.1
