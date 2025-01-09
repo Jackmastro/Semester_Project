@@ -276,19 +276,19 @@ class Simulation:
         x_lim_max = self.model.DeltaT_max * 1.1
         y_lim_max = self.model.I_HP_max * 1.1
 
-        ax.plot(x_vec, y_vec_max, color='black', linestyle=':', label=r'$U_{max}$')
+        ax.plot(x_vec, y_vec_max, color='black', linestyle=':', label=r'$U_\mathrm{max}$')
         ax.fill_between(x_vec, y_vec_max, y_lim_max, color='gray', alpha=0.5)
 
         ax.plot(x_vec, y_vec_min, color='black', linestyle=':')
         ax.fill_between(x_vec, y_vec_min, -y_lim_max, color='gray', alpha=0.5)
 
-        ax.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_{max}$')
+        ax.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_\mathrm{max}$')
         ax.fill_between(x_vec, self.model.I_HP_max, y_lim_max, color='gray', alpha=0.5)
 
         ax.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
         ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color='gray', alpha=0.5)
 
-        ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_{max}$')
+        ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_\mathrm{max}$')
         ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color='gray', alpha=0.5)
         
         ax.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
