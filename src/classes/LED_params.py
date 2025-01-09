@@ -30,9 +30,16 @@ class LEDparams:
         plate_col = 12
         self.dimensions = (num_colors, plate_row, plate_col)
 
+        # Radiant power with right dimensions
+        self.radiant_power_3D = self.radiant_power[:, np.newaxis, np.newaxis]
+
+        # Min and max values
+        self.P_rad_min = 0 # W
+        self.P_rad_max = np.sum(np.ones(self.dimensions) * self.radiant_power_3D) # W
+
     def program_reader(self, x_matrix_scaled:np.ndarray) -> np.ndarray:
         """ Returns the total duty cycle, single LED constant current and total radiant power"""
-        self.P_rad = np.sum(x_matrix_scaled * self.radiant_power[:, np.newaxis, np.newaxis]) # W
+        self.P_rad = np.sum(x_matrix_scaled * self.radiant_power_3D) # W
 
         self.x_LED_tot = np.sum(x_matrix_scaled) # total duty cycle assuming equal current for all LEDs
 
@@ -40,8 +47,14 @@ class LEDparams:
     
     def get_x_from_P_rad(self, P_rad:float) -> np.ndarray:
         """ Returns the duty cycle for the given radiant power"""
-        x_LED = self.dimensions[0] * P_rad / sum(self.radiant_power) # total duty cycle assuming equal current and x for all LEDs
-        return x_LED
+
+        assert P_rad >= self.P_rad_min, f"Radiant power must be greater than {self.P_rad_min}"
+        assert P_rad <= self.P_rad_max, f"Radiant power must be less than {self.P_rad_max}"
+
+        self.P_rad = P_rad
+        self.x_LED_tot = self.dimensions[0] * P_rad / sum(self.radiant_power) # total duty cycle assuming equal current and x for all LEDs
+
+        return self.x_LED_tot, self.I_LED, self.P_rad
 
 ##########################################################################
 if __name__ == '__main__':
