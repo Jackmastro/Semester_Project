@@ -159,6 +159,10 @@ class Simulation:
         ax_temp.tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         ax_temp.tick_params(axis='x', which='major', top=True)
         ax_temp.tick_params(axis='y', which='major', left=True, right=True)
+        ax_temp.spines['top'].set_visible(True)
+        ax_temp.spines['right'].set_visible(True)
+        ax_temp.spines['bottom'].set_visible(True)
+        ax_temp.spines['left'].set_visible(True)
 
         # x_SoC and x_FAN (second row, first column)
         axs[1, 0].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -178,6 +182,10 @@ class Simulation:
         axs[1, 0].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 0].tick_params(axis='x', which='major', top=True)
         axs[1, 0].tick_params(axis='y', which='major', left=True, right=True)
+        axs.spines['top'].set_visible(True)
+        axs.spines['right'].set_visible(True)
+        axs.spines['bottom'].set_visible(True)
+        axs.spines['left'].set_visible(True)
 
         # Currents (second row, second column)
         axs[1, 1].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -204,6 +212,10 @@ class Simulation:
         axs[1, 1].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 1].tick_params(axis='x', which='major', top=True)
         axs[1, 1].tick_params(axis='y', which='major', left=True, right=True)
+        axs.spines['top'].set_visible(True)
+        axs.spines['right'].set_visible(True)
+        axs.spines['bottom'].set_visible(True)
+        axs.spines['left'].set_visible(True)
 
         # Voltages (second row, third column)
         axs[1, 2].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -226,6 +238,10 @@ class Simulation:
         axs[1, 2].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 2].tick_params(axis='x', which='major', top=True)
         axs[1, 2].tick_params(axis='y', which='major', left=True, right=True)
+        axs.spines['top'].set_visible(True)
+        axs.spines['right'].set_visible(True)
+        axs.spines['bottom'].set_visible(True)
+        axs.spines['left'].set_visible(True)
 
         plt.tight_layout()
         if save_plot:
@@ -273,26 +289,37 @@ class Simulation:
                 head_width=0.4, head_length=2.5, fc=cmap(norm(COP[i])), ec=cmap(norm(COP[i])), alpha=0.4
             )
 
+        # Constraints
         x_lim_max = self.model.DeltaT_max * 1.1
         y_lim_max = self.model.I_HP_max * 1.1
 
+        fill_color = 'gray'
+        fill_alpha = 0.5
+        hatch_style = '\\\\'
+
         ax.plot(x_vec, y_vec_max, color='black', linestyle=':', label=r'$U_\mathrm{max}$')
-        ax.fill_between(x_vec, y_vec_max, y_lim_max, color='gray', alpha=0.5)
+        # ax.fill_between(x_vec, y_vec_max, y_lim_max, color=fill_color, alpha=fill_alpha)
+        ax.fill_between(x_vec, y_vec_max, y_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
 
         ax.plot(x_vec, y_vec_min, color='black', linestyle=':')
-        ax.fill_between(x_vec, y_vec_min, -y_lim_max, color='gray', alpha=0.5)
+        # ax.fill_between(x_vec, y_vec_min, -y_lim_max, color=fill_color, alpha=fill_alpha)
+        ax.fill_between(x_vec, y_vec_min, -y_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
 
         ax.axhline(y=self.model.I_HP_max, color='black', linestyle='--', label=r'$I_\mathrm{max}$')
-        ax.fill_between(x_vec, self.model.I_HP_max, y_lim_max, color='gray', alpha=0.5)
+        # ax.fill_between(x_vec, self.model.I_HP_max, y_lim_max, color=fill_color, alpha=fill_alpha)
+        ax.fill_between(x_vec, self.model.I_HP_max, y_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
 
         ax.axhline(y=-self.model.I_HP_max, color='black', linestyle='--')
-        ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color='gray', alpha=0.5)
+        # ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color=fill_color, alpha=fill_alpha)
+        ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
 
         ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_\mathrm{max}$')
-        ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color='gray', alpha=0.5)
+        # ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color=fill_color, alpha=fill_alpha)
+        ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
         
         ax.axvline(x=-self.model.DeltaT_max, color='black', linestyle='-.')
-        ax.fill_betweenx([-y_lim_max, y_lim_max], -self.model.DeltaT_max, -x_lim_max, color='gray', alpha=0.5)
+        # ax.fill_betweenx([-y_lim_max, y_lim_max], -self.model.DeltaT_max, -x_lim_max, color=fill_color, alpha=fill_alpha)
+        ax.fill_betweenx([-y_lim_max, y_lim_max], -self.model.DeltaT_max, -x_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
 
         # Configure plot
         ax.set_xlim(-x_lim_max, x_lim_max)
