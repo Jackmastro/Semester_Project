@@ -297,8 +297,8 @@ class Simulation:
         # Configure plot
         ax.set_xlim(-x_lim_max, x_lim_max)
         ax.set_ylim(-y_lim_max, y_lim_max)
-        ax.set_xlabel(r'$\Delta T_\mathrm{HP} \; [°C]$')
-        ax.set_ylabel(r'$I_\mathrm{HP} \; [A]$')
+        ax.set_xlabel(r'$\Delta T_\mathrm{hp} \; [°C]$')
+        ax.set_ylabel(r'$I_\mathrm{hp} \; [A]$')
         ax.set_title(title)
         ax.legend(loc='upper left')
         # ax.legend()
@@ -313,7 +313,7 @@ class Simulation:
         ax.spines['right'].set_visible(True)
         ax.spines['bottom'].set_visible(True)
         ax.spines['left'].set_visible(True)
-        plt.colorbar(lc, ax=ax, label='COP')
+        plt.colorbar(lc, ax=ax, label=r'$\mathrm{COP}_\mathrm{hp}$')
         
         if save_plot:
             filename = "I_DT_" + filename
