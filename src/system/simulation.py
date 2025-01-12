@@ -182,10 +182,10 @@ class Simulation:
         axs[1, 0].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 0].tick_params(axis='x', which='major', top=True)
         axs[1, 0].tick_params(axis='y', which='major', left=True, right=True)
-        axs.spines['top'].set_visible(True)
-        axs.spines['right'].set_visible(True)
-        axs.spines['bottom'].set_visible(True)
-        axs.spines['left'].set_visible(True)
+        axs[1, 0].spines['top'].set_visible(True)
+        axs[1, 0].spines['right'].set_visible(True)
+        axs[1, 0].spines['bottom'].set_visible(True)
+        axs[1, 0].spines['left'].set_visible(True)
 
         # Currents (second row, second column)
         axs[1, 1].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -212,10 +212,10 @@ class Simulation:
         axs[1, 1].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 1].tick_params(axis='x', which='major', top=True)
         axs[1, 1].tick_params(axis='y', which='major', left=True, right=True)
-        axs.spines['top'].set_visible(True)
-        axs.spines['right'].set_visible(True)
-        axs.spines['bottom'].set_visible(True)
-        axs.spines['left'].set_visible(True)
+        axs[1, 1].spines['top'].set_visible(True)
+        axs[1, 1].spines['right'].set_visible(True)
+        axs[1, 1].spines['bottom'].set_visible(True)
+        axs[1, 1].spines['left'].set_visible(True)
 
         # Voltages (second row, third column)
         axs[1, 2].axhline(y=0, lw=1, color="black", label='_nolegend_')
@@ -238,10 +238,10 @@ class Simulation:
         axs[1, 2].tick_params(axis='y', which='minor', direction='in', left=True, right=True)
         axs[1, 2].tick_params(axis='x', which='major', top=True)
         axs[1, 2].tick_params(axis='y', which='major', left=True, right=True)
-        axs.spines['top'].set_visible(True)
-        axs.spines['right'].set_visible(True)
-        axs.spines['bottom'].set_visible(True)
-        axs.spines['left'].set_visible(True)
+        axs[1, 2].spines['top'].set_visible(True)
+        axs[1, 2].spines['right'].set_visible(True)
+        axs[1, 2].spines['bottom'].set_visible(True)
+        axs[1, 2].spines['left'].set_visible(True)
 
         plt.tight_layout()
         if save_plot:
@@ -313,7 +313,7 @@ class Simulation:
         # ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color=fill_color, alpha=fill_alpha)
         ax.fill_between(x_vec, -self.model.I_HP_max, -y_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
 
-        ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_\mathrm{max}$')
+        ax.axvline(x=self.model.DeltaT_max, color='black', linestyle='-.', label=r'$\Delta T_\mathrm{hp,max}$')
         # ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color=fill_color, alpha=fill_alpha)
         ax.fill_betweenx([-y_lim_max, y_lim_max], self.model.DeltaT_max, x_lim_max, color='none', hatch=hatch_style, edgecolor=fill_color, linewidth=0, label='_nolegend_')
         
