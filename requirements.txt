@@ -10,3 +10,4 @@ paho-mqtt
 sympy
 ipython
 tk
+scikit-learn
