@@ -215,7 +215,7 @@ class Model:
         # display(Markdown(r"$R_{eq}(x_{FAN}=1):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 1.0}))
         # display(Markdown(r"$R_{eq}(x_{FAN}=0):$"), R_eq_bottom.subs(self.params_values).subs({x_FAN: 0.0}))
 
-        ## Output
+        ## Cell
         T_cell = R_cell_amb * Q_top_cell + T_amb # K
         # display(Markdown(r"$T_{cell}:$"), T_cell)
 
@@ -242,18 +242,15 @@ class Model:
         Q_LED = P_LED - P_rad # W
 
         ############################### INDEPENDENT of cooling or heating
+        self.T_cell_symb = T_cell
         ### Output
         # Symbolic
         self.g_symb = sp.Matrix([T_top])
-        # display(Markdown(r"$\dot{x} = f(x, u):$"), self.f_symb)
-        # display(Markdown(r"$\dot{x} = f(x, u):$"), sp.latex(self.f_symb))
-        # display(Markdown(r"$y = g(x, u):$"), self.g_symb)
 
         # Linearization
         self.C_symb = self.g_symb.jacobian(self.sym_x)
         self.D_symb = self.g_symb.jacobian(self.sym_u)
-        # display(Markdown(r"$A = \nabla_x f:$"), self.A_symb.subs(self.params_values).subs({x_SoC: 0.85, T_top: 25.0, T_bot: 55.0, x_FAN: 1.0}))
-        # display(Markdown(r"$B = \nabla_u f:$"), self.B_symb.subs(self.params_values).subs({x_SoC: 0.85, T_top: 25.0, T_bot: 55.0, x_FAN: 1.0}))
+        self.l_symb = self.g_symb - self.C_symb @ self.sym_x - self.D_symb @ self.sym_u
 
         # Numerical functions with parameters already inserted
         self.g_num = sp.lambdify((self.sym_x, self.sym_u), self.g_symb.subs(self.params_values), modules="numpy")
@@ -290,6 +287,7 @@ class Model:
         # Linearization
         self.A_symb_cool = self.f_symb_cool.jacobian(self.sym_x)
         self.B_symb_cool = self.f_symb_cool.jacobian(self.sym_u)
+        self.h_symb_cool = self.f_symb_cool - self.A_symb_cool @ self.sym_x - self.B_symb_cool @ self.sym_u
 
         # Numerical functions with parameters already inserted
         self.f_num_LED_off = sp.lambdify((self.sym_x, self.sym_u), self.f_symb_cool.subs({'x_LED': 0.0}).subs(self.params_values), modules="numpy") # needed for extending the plots to negative times
@@ -328,6 +326,7 @@ class Model:
         # Linearization
         self.A_symb_heat = self.f_symb_heat.jacobian(self.sym_x)
         self.B_symb_heat = self.f_symb_heat.jacobian(self.sym_u)
+        self.h_symb_heat = self.f_symb_heat - self.A_symb_heat @ self.sym_x - self.B_symb_heat @ self.sym_u
 
         # Numerical functions with parameters already inserted
         self.f_num_heat    = sp.lambdify((self.sym_x, self.sym_u), self.f_symb_heat.subs(self.params_values), modules="numpy")

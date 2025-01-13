@@ -326,6 +326,8 @@ class Simulation:
         ax.set_ylim(-y_lim_max, y_lim_max)
         ax.set_xlabel(r'$\Delta T_\mathrm{hp}$ [°C]')
         ax.set_ylabel(r'$I_\mathrm{hp}$ [A]')
+        ax.text(-100,  2.1, "Cooling", fontsize=12, ha='center', va='center', rotation=90, color='blue')
+        ax.text(-100, -2.1, "Heating", fontsize=12, ha='center', va='center', rotation=90, color='red')
         ax.set_title(title)
         ax.legend(loc='upper left')
         # ax.legend()
