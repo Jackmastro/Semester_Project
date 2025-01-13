@@ -308,8 +308,8 @@ class Model:
 
         ############################### HEATING of T_top
         Delta_T_HP_heat = T_top - T_bot
-        U_HP_heat       = S_M*Delta_T_HP_heat + R_M*sp.sqrt(I_HP**2) # V
-        P_HP_heat       = U_HP_heat*I_HP # W
+        U_HP_heat       = S_M*Delta_T_HP_heat                  + R_M*sp.sqrt(I_HP**2) # V
+        P_HP_heat       = S_M*Delta_T_HP_heat*sp.sqrt(I_HP**2) + R_M*I_HP**2 # W
         Q_top_heat      = -S_M*T_top*sp.sqrt(I_HP**2) - 0.5*R_M*I_HP**2 + K_M*Delta_T_HP_heat # W
         Q_bot_heat      = -S_M*T_bot*sp.sqrt(I_HP**2) + 0.5*R_M*I_HP**2 + K_M*Delta_T_HP_heat # Q_top_heat + P_HP_heat # W
         COP_heat        = sp.sqrt(Q_top_heat**2) / sp.sqrt(P_HP_heat**2) # Condition for P_HP close to zero in get_values

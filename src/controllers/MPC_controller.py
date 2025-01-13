@@ -23,7 +23,7 @@ class MPCController(ControllerBase):
         self.sampling_time = sampling_time # s: sampling time for the calculation of control inputs
         self.discret_time = discret_time   # s: discretization time for the model evolution
 
-        self.K = int(pred_time / discret_time)
+        self.N = int(pred_time / discret_time) # prediction step
 
         self.n = A_d.shape[0] # number of states
         self.m = B_d.shape[1] # number of inputs
@@ -53,8 +53,8 @@ class MPCController(ControllerBase):
 
     def _init_optimization_problem(self) -> None:
         # Define variables and dynamic parameters for the optimization problem
-        self.x_var    = cp.Variable((self.n, self.K+1))
-        self.i_var    = cp.Variable((self.m, self.K))
+        self.x_var    = cp.Variable((self.n, self.N+1))
+        self.i_var    = cp.Variable((self.m, self.N))
         self.x0_param = cp.Parameter(self.n)
 
         # Placeholders for parametrization
@@ -68,7 +68,7 @@ class MPCController(ControllerBase):
         self.constraints = [self.x_var[:, 0] == self.x0_param]
         
         # Iterate over the horizon K - 1 for cost and constraints
-        for k in range(self.K):
+        for k in range(self.N):
             self.cost += (
                 cp.quad_form(self.x_var[:, k] - self.x_inf, self.Q) + 
                 cp.quad_form(self.i_var[:, k], self.R)
@@ -84,8 +84,8 @@ class MPCController(ControllerBase):
                 ]
         
         # Terminal cost or constraint for stability
-        self.cost += cp.quad_form(self.x_var[:, self.K] - self.x_inf, self.S)
-        # self.constraints += [self.x_var[:, self.K] == self.x_inf]
+        self.cost += cp.quad_form(self.x_var[:, self.N] - self.x_inf, self.S)
+        # self.constraints += [self.x_var[:, self.N] == self.x_inf]
 
         self.problem = cp.Problem(cp.Minimize(self.cost), self.constraints)
 
@@ -102,7 +102,7 @@ class MPCController(ControllerBase):
         # Extend time to one before current_time
         time_index = np.hstack((current_time - self.discret_time,
                                 np.arange(current_time,
-                                          current_time + self.K * self.discret_time,
+                                          current_time + self.N * self.discret_time,
                                           self.discret_time)))
         
         # Initialize with zeros
