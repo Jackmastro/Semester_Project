@@ -11,3 +11,4 @@ sympy
 ipython
 tk
 scikit-learn
+openpyxl
