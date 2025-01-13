@@ -277,7 +277,7 @@ class Simulation:
         lc.set_linewidth(2)
 
         ### Plot
-        fig, ax = plt.subplots(figsize=(10, 2))
+        fig, ax = plt.subplots(figsize=(10, 3))
         ax.axhline(y=0, lw=1, color='black', label='_nolegend_')
         ax.axvline(x=0, lw=1, color='black', label='_nolegend_')
         ax.add_collection(lc)
