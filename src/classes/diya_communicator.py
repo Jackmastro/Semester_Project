@@ -9,6 +9,9 @@ import os
 
 
 class Communicator:
+    """
+    Class to communicate with the real device. Used to send control inputs
+    """
     def __init__(self, diya_name:str, save_data:bool=False, save_frequency:int=60, choose_specific_directory:bool=False, verbose:bool=False) -> None:
         # Define the MQTT broker details
         self.BROKER = "mqtt.119.ovh"

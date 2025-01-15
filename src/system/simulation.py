@@ -13,6 +13,9 @@ from img import save_plot2pdf
 
 
 class Simulation(SystemBase):
+    """
+    Simulation for the DIYA: run, plot data
+    """
     def __init__(self, model:Model, controller:ControllerBase, dt_sim:float, time_span:float) -> None:
         self.model      = model
         self.controller = controller
@@ -31,7 +34,7 @@ class Simulation(SystemBase):
 
         self.x0 = self.model.get_initial_state
 
-        self.data = {
+        self.data:dict = {
             "time":   [],
             "x_SoC":  [self.x0[0]],
             "T_top":  [self.x0[1]],
@@ -49,7 +52,7 @@ class Simulation(SystemBase):
         }
         self.data_df:pd.DataFrame = pd.DataFrame()
 
-        self.colors = {
+        self.colors:dict = {
             "battery": "green",
             "HP":      "orange",
             "fan":     "purple",
@@ -61,6 +64,9 @@ class Simulation(SystemBase):
         }
 
     def _append_sim_data(self, current_time:float, x_next:np.ndarray, u_bounded:np.ndarray, values:dict) -> None:
+        """
+        Append the data of the simulation in the data dictionary
+        """
         self.data["time"].append(current_time)
         self.data["x_SoC"].append(x_next[0])
         self.data["T_top"].append(x_next[1])
@@ -77,6 +83,9 @@ class Simulation(SystemBase):
         self.data["Q_top"].append(values["Q_top"])
 
     def run(self, with_initial_time:bool=False, initial_time_span:int=100) -> pd.DataFrame:
+        """
+        Runs the simulation and append the data of each step. Negative times can be simulated here
+        """
         x_prev = self.x0
 
         # Initial time steps
@@ -130,6 +139,9 @@ class Simulation(SystemBase):
         return self.data_df
     
     def plot_time_results(self, title:str="", save_plot:bool=False, filename:str=None, results:pd.DataFrame=None) -> None:
+        """
+        Plots the time evolution of the simulation: first plot temperature, second x_fan and x_SoC, third current, fourth voltages
+        """
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")
@@ -253,6 +265,9 @@ class Simulation(SystemBase):
         plt.show()
 
     def plot_current_temperature(self, title:str="", save_plot:bool=False, filename:str=None, results:pd.DataFrame=None) -> None:
+        """
+        Plots the operational variables of the Peltier module: I_hp vs DT_hp with COP as color of the trajectory
+        """
         if results is None:
             if self.data_df is None:
                 raise ValueError("No data to plot")

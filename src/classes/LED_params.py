@@ -2,6 +2,9 @@ import numpy as np
 
 
 class LEDparams:
+    """
+    Class that connects the Program to a LED consumption
+    """
     def __init__(self) -> None:
         self.I_LED = 0.017 # A
         
@@ -38,7 +41,9 @@ class LEDparams:
         self.P_rad_max = np.sum(np.ones(self.dimensions) * self.radiant_power_3D) # W
 
     def program_reader(self, x_matrix_scaled:np.ndarray) -> np.ndarray:
-        """ Returns the total duty cycle, single LED constant current and total radiant power"""
+        """
+        Returns the total duty cycle, single LED constant current and total radiant power
+        """
         self.P_rad = np.sum(x_matrix_scaled * self.radiant_power_3D) # W
 
         self.x_LED_tot = np.sum(x_matrix_scaled) # total duty cycle assuming equal current for all LEDs
@@ -46,7 +51,9 @@ class LEDparams:
         return self.x_LED_tot, self.I_LED, self.P_rad
     
     def get_x_from_P_rad(self, P_rad:float) -> np.ndarray:
-        """ Returns the duty cycle for the given radiant power"""
+        """
+        Returns the duty cycle for the given radiant power
+        """
 
         assert P_rad >= self.P_rad_min, f"Radiant power must be greater than {self.P_rad_min}"
         assert P_rad <= self.P_rad_max, f"Radiant power must be less than {self.P_rad_max}"

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.widgets import Slider, Button, TextBox
 
+
 class MQTTListener:
     def __init__(self, broker="mqtt.119.ovh", topic_rx="diya07/rx/#", topic_tx="diya07/tx"):
         self.broker = broker

@@ -11,6 +11,9 @@ from data import load_coefficients
 from output_notebooks import save_matrices2csv
 
 class Model:
+    """
+    Model for the DIYA: symbolic, numerical, linearization, constraints are all included here
+    """
     def __init__(self, LEDparams:LEDparams, x0:np.ndarray, T_amb0:float=conv_temp(25.0, 'C', 'K')) -> None:
         """
         x0 : Initial state
@@ -77,6 +80,9 @@ class Model:
         self._init_sym_model()
 
     def _init_params(self, LEDparams:LEDparams, T_amb:float) -> None:
+        """
+        Initialization of the numerical parameters
+        """
         # Battery parameters
         self.P_rest   = 1.0 # W TODO get better value
         self.I_rest   = 0.5 # A TODO get better value
@@ -133,6 +139,9 @@ class Model:
         self.I_HP_min        = -self.I_HP_max
 
     def _init_operational_points(self) -> None:
+        """
+        Initialization of the two linearization points
+        """
         x_SoC     = 0.85
         T_cold    = conv_temp(self.T_amb, 'C', 'K') # K
         T_hot     = conv_temp(self.T_amb + 20.0, 'C', 'K') # K
@@ -154,6 +163,9 @@ class Model:
                                    x_FAN])
 
     def _init_sym_model(self) -> None:
+        """
+        Initialization of both the symbolic and numerical model for the nonlinear and linear ODE and equations
+        """
         # States
         x_SoC, T_top, T_bot = sp.symbols('x_SoC, T_top, T_bot')
         self.sym_x = sp.Matrix([x_SoC,
@@ -343,6 +355,11 @@ class Model:
         self.P_HP_num_heat = sp.lambdify((self.sym_x, self.sym_u), P_HP_heat.subs(self.params_values), modules="numpy")
 
     def get_continuous_linearization(self, T_ref:float, T_amb:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        """
+        Returns the state-space matrices linearized
+        - at the cooling point if T_ref <= T_amb,
+        - at the heating point else
+        """
         self.T_cell_ref = T_ref
         
         # COOLING
@@ -383,6 +400,9 @@ class Model:
         return np.array(A).astype(np.float32), np.array(B).astype(np.float32), np.array(h).astype(np.float32), np.array(C).astype(np.float32), np.array(D).astype(np.float32), np.array(l).astype(np.float32), xss, uss
     
     def get_discrete_linearization(self, T_ref:float, T_amb:float, dt_d:float, xss:np.ndarray=None, uss:np.ndarray=None) -> np.ndarray:
+        """
+        Returns the state-space matrices of the continouos time discretized by dt_d
+        """
         A, B, _, C, D, _, xss, uss = self.get_continuous_linearization(T_ref, T_amb, xss, uss)
         A_d, B_d, C_d, D_d, _ = cont2discrete((A, B, C, D), dt=dt_d, method='zoh')
 
@@ -399,6 +419,9 @@ class Model:
         return np.array(A_d).astype(np.float32), np.array(B_d).astype(np.float32), np.array(h_d).astype(np.float32), np.array(C_d).astype(np.float32), np.array(D_d).astype(np.float32), np.array(l_d).astype(np.float32)
     
     def _update_HP_op_space(self, x:np.ndarray, u:np.ndarray) -> None:
+        """
+        Updates the boolean that tells whether we are cooling or heating
+        """
         # COOLING: positive current
         if u[0] >= 0:
             self.HP_in_cooling = True
@@ -406,15 +429,11 @@ class Model:
         # HEATING: negative current
         else:
             self.HP_in_cooling = False
-        # # COOLING
-        # if self.Q_top_num_cool(x, u) >= 0:
-        #     self.HP_in_cooling = True
-
-        # # HEATING
-        # else:
-        #     self.HP_in_cooling = True # TODO change to False
     
     def _dynamics_f(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> np.ndarray:
+        """
+        Nonlinear dynamics of the system. LED_off = True is used for negative times
+        """
         if LED_off:
             return np.array(self.f_num_LED_off(x, u)).flatten()
         else:
@@ -427,6 +446,9 @@ class Model:
                 return np.array(self.f_num_heat(x, u)).flatten()
 
     def _observer_g(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
+        """
+        Function that connects states and input to the outputs
+        """
         return np.array(self.g_num(x, u)).flatten()
 
     def discretized_update(self, u:np.ndarray, dt:float, LED_off:bool=False) -> np.ndarray:
@@ -460,9 +482,15 @@ class Model:
         return self.x_next, self.u
     
     def get_output(self) -> np.ndarray:
+        """
+        Returns outputs of the system. Used for control.
+        """
         return self._observer_g(self.x_prev, self.u)
     
     def get_values(self, x:np.ndarray, u:np.ndarray, LED_off:bool=False) -> dict:
+        """
+        Returns the internal values of the system that can then be analyzed or plotted
+        """
         # To avoid multiple calls of _update_HP_op_space when running the simulation, here no update of HP_in_cooling
 
         # Negative times
@@ -522,8 +550,12 @@ class Model:
         }
     
     def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:
+        """
+        Given a temperature difference, it returns the constraint on the Peltier current.
+        -U_bt <= U_hp <= U_bt
+        """
         # Zero order approximation for U_BT
-        U_BT = self.U_BT_num(self.x_op_cool, self.u_op_cool) # TODO use max and min values USING COOL IS FINE?
+        U_BT = self.U_BT_num(self.x_op_cool, self.u_op_cool)
 
         I_HP_max_U_BT = (U_BT - self.S_M * delta_T) / self.R_M
         I_HP_min_U_BT = (- U_BT - self.S_M * delta_T) / self.R_M
@@ -531,6 +563,11 @@ class Model:
         return I_HP_min_U_BT, I_HP_max_U_BT
     
     def get_constraints_I_BT2I_HP(self, u_bounded:np.ndarray) -> np.ndarray:
+        """
+        Constraint on the Peltier current given by solving
+        I_bt = |I_hp| + I_rest + I_fan + I_led
+        I_hp_min <= I_hp <= I_hp_max
+        """
         # Assuming that the current of the fan is satisfied
         C = self.I_LED * self.x_LED_tot + self.I_FAN * u_bounded[1] + self.I_rest
 
@@ -544,6 +581,9 @@ class Model:
         return I_HP_min_I_BT, I_HP_max_I_BT
     
     def _input_bounds(self, x:np.ndarray, u:np.ndarray) -> np.ndarray:
+        """
+        Returns the bounded input vector
+        """
         u_bounded = np.copy(u)
 
         # Fan duty cycle bounds
@@ -560,14 +600,20 @@ class Model:
         return u_bounded
     
     def _states_bounds(self, x:np.ndarray) -> np.ndarray:
+        """
+        Returns the bounded state vector
+        """
         x_bounded = np.copy(x)
 
         x_bounded[0] = np.clip(x[0], 0.0, 1.0)
-        x_bounded[1] = np.clip(x[1], 0.0, conv_temp(150.0, 'C', 'K'))
-        x_bounded[2] = np.clip(x[2], 0.0, conv_temp(150.0, 'C', 'K'))
+        # x_bounded[1] = np.clip(x[1], 0.0, conv_temp(150.0, 'C', 'K'))
+        # x_bounded[2] = np.clip(x[2], 0.0, conv_temp(150.0, 'C', 'K'))
         return x_bounded
     
     def save_linearized_model(self, type:str, T_ref:float=None, T_amb:float=None, Ts:float=None) -> None:
+        """
+        Given the type (continuous or discrete), it saves the matrices as files
+        """
         if T_ref is None:
             T_ref = self.T_cell_ref # TODO could be problematic if not given in __init__
         if T_amb is None:
