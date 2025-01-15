@@ -226,7 +226,7 @@ class Model:
 
         ## Battery
         # I_BT = (U_oc + R_BT*I_LED*x_LED - sp.sqrt(U_oc**2 - 2*R_BT*I_LED*x_LED*U_oc + (R_BT*I_LED*x_LED)**2 - 4*R_BT*(P_rest + P_FAN + sp.sqrt(P_HP**2)))) / (2*R_BT) # A
-        I_BT = (I_LED*x_LED + I_FAN*x_FAN + sp.sqrt(I_HP**2) + I_rest) / n # A
+        I_BT = I_LED*x_LED + I_FAN*x_FAN + sp.sqrt(I_HP**2) + I_rest # A, already total current
         U_BT = U_oc - R_BT * I_BT # V
         P_BT = U_BT * I_BT # W
         # display(Markdown(r"$U_{BT}:$"), U_BT.subs(self.params_values))
@@ -274,7 +274,7 @@ class Model:
         COP_cool        = sp.sqrt(Q_top_cool**2) / sp.sqrt(P_HP_cool**2) # Condition for P_HP close to zero in get_values
 
         ### Nonlinear ODEs
-        dx_SoC_dt_cool = - I_BT / (Q_max)
+        dx_SoC_dt_cool = - I_BT / (n * Q_max)
         dT_top_dt_cool = (1 / (m_top * cp_Al)) * (Q_LED - Q_top_cool - Q_top_cell)
         dT_bot_dt_cool = (1 / (m_bot * cp_Al)) * (Q_rest + Q_bot_cool - Q_bot_amb)
 
@@ -313,7 +313,7 @@ class Model:
         COP_heat        = sp.sqrt(Q_top_heat**2) / sp.sqrt(P_HP_heat**2) # Condition for P_HP close to zero in get_values
 
         ### Nonlinear ODEs
-        dx_SoC_dt_heat = - I_BT / (Q_max)
+        dx_SoC_dt_heat = - I_BT / (n * Q_max)
         dT_top_dt_heat = (1 / (m_top * cp_Al)) * (Q_LED - Q_top_heat - Q_top_cell)
         dT_bot_dt_heat = (1 / (m_bot * cp_Al)) * (Q_rest + Q_bot_heat - Q_bot_amb)
         
