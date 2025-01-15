@@ -6,26 +6,27 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from scipy.constants import convert_temperature as conv_temp
 
+from .system_base import SystemBase
 from classes import Model
 from controllers import ControllerBase
 from img import save_plot2pdf
 
 
-class Simulation:
+class Simulation(SystemBase):
     def __init__(self, model:Model, controller:ControllerBase, dt_sim:float, time_span:float) -> None:
-        self.model = model
+        self.model      = model
         self.controller = controller
 
-        assert dt_sim > 0, "dt_sim must be greater than 0"
-        assert time_span > 0, "time_span must be greater than 0"
+        assert dt_sim    > 0,       "dt_sim must be greater than 0"
+        assert time_span > 0,       "time_span must be greater than 0"
         assert time_span >= dt_sim, "time_span must be greater than or equal to dt_sim"
 
-        self.dt_sim = dt_sim
-        self.time_span = time_span
+        self.dt_sim     = dt_sim
+        self.time_span  = time_span
         self.time_steps = int(self.time_span / self.dt_sim) + 1 # Python counting
 
-        # Placeholder for plots
-        self.initial_time_span = 0
+        # Placeholders for plots
+        self.initial_time_span  = 0
         self.initial_time_steps = 0
 
         self.x0 = self.model.get_initial_state
@@ -37,13 +38,14 @@ class Simulation:
             "T_bot":  [self.x0[2]],
             "I_HP":   [],
             "x_FAN":  [],
-            "T_cell": [self.x0[1]], # Assuming equal to Tc
+            "T_cell": [self.x0[1]], # Assuming equal to T_top for first time step
             "I_BT":   [],
             "U_BT":   [],
             "U_oc":   [],
             "U_HP":   [],
             "COP":    [],
             "x_LED":  [],
+            "Q_top":  [],
         }
         self.data_df:pd.DataFrame = pd.DataFrame()
 
@@ -72,6 +74,7 @@ class Simulation:
         self.data["U_HP"].append(values["U_HP"])
         self.data["COP"].append(values["COP"])
         self.data["x_LED"].append(values["x_LED"])
+        self.data["Q_top"].append(values["Q_top"])
 
     def run(self, with_initial_time:bool=False, initial_time_span:int=100) -> pd.DataFrame:
         x_prev = self.x0

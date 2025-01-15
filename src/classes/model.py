@@ -474,10 +474,12 @@ class Model:
             # COOLING
             if self.HP_in_cooling:
                 U_HP = self.U_HP_num_cool(x, u)
+                Q_top = self.Q_top_num_cool(x, u)
             
             # HEATING
             else:
                 U_HP = self.U_HP_num_heat(x, u)
+                Q_top = self.Q_top_num_heat(x, u)
         
         # Simulation
         else:
@@ -489,6 +491,7 @@ class Model:
             # COOLING
             if self.HP_in_cooling:
                 U_HP = self.U_HP_num_cool(x, u)
+                Q_top = self.Q_top_num_cool(x, u)
 
                 # Condition for COP with P_HP close to zero
                 if abs(self.P_HP_num_cool(x, u)) < cop_tol:
@@ -499,6 +502,7 @@ class Model:
             # HEATING
             else:
                 U_HP = self.U_HP_num_heat(x, u)
+                Q_top = self.Q_top_num_heat(x, u)
 
                 # Condition for COP with P_HP close to zero
                 if abs(self.P_HP_num_heat(x, u)) < cop_tol:
@@ -514,6 +518,7 @@ class Model:
             'I_BT':   self.I_BT_num(x, u),
             'T_cell': self.T_cell_num(x, u),
             'x_LED':  x_LED,
+            'Q_top':  Q_top,
         }
     
     def get_constraints_U_BT2I_HP(self, delta_T:np.ndarray) -> np.ndarray:
