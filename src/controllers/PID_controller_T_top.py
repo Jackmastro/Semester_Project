@@ -5,6 +5,9 @@ import numpy as np
 
 
 class PIDController_T_top(ControllerBase):
+    """
+    PID controller in continuous time that follows T_top
+    """
     def __init__(self, kp:float, ki:float, kd:float, T_top_ref:float, T_cell_ref:float, sampling_time:float, output_limits:tuple) -> None:
         self.setpoint = T_cell_ref # for plotting
 
@@ -17,6 +20,9 @@ class PIDController_T_top(ControllerBase):
         self.pid = PID(Kp=kp, Ki=ki, Kd=kd, setpoint=T_top_ref, sample_time=0.0, output_limits=output_limits)
 
     def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
+        """
+        Returns control input
+        """
         if self.last_update_time is None or (current_time - self.last_update_time) >= self.sampling_time:
             self.last_update_time = current_time
             self.u_prev = np.array([self.pid(x[1]),

@@ -4,7 +4,9 @@ from scipy.linalg import solve_continuous_are
 
 
 class LQRControllerCont(ControllerBase):
-    """ Infinite horizon LQR controller """
+    """
+    Infinite horizon LQR controller in continuous time
+    """
     def __init__(self, T_top_ref:float, T_cell_ref:float, A:np.ndarray, B:np.ndarray, Q:np.ndarray, R:np.ndarray) -> None:
         # TODO check dimensions, (semi) pos def
 
@@ -16,7 +18,7 @@ class LQRControllerCont(ControllerBase):
 
         # Solve Riccati equation
         self.P = solve_continuous_are(A, B, Q, R)
-        self.K = -np.linalg.inv(R) @ B.T @ self.P
+        self.K = np.linalg.inv(R) @ B.T @ self.P
 
     def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
-        return self.K @ (x - self.x_inf)
+        return - self.K @ (x - self.x_inf)

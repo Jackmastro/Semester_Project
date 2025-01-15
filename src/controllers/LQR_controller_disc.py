@@ -4,7 +4,9 @@ from scipy.linalg import solve_discrete_are
 
 
 class LQRControllerDisc(ControllerBase):
-    """ Infinite horizon discrete LQR controller """
+    """
+    Infinite horizon LQR controller in discrete time
+    """
     def __init__(self, T_top_ref:float, T_cell_ref:float, A_d:np.ndarray, B_d:np.ndarray, Q:np.ndarray, R:np.ndarray, sampling_time:float) -> None:
         
         self.u_prev = np.zeros((2, 1))
@@ -22,7 +24,7 @@ class LQRControllerDisc(ControllerBase):
 
         # Solve Riccati equation
         self.P = solve_discrete_are(A_d, B_d, Q, R)
-        self.K = -np.linalg.inv(R + B_d.T @ self.P @ B_d) @ B_d.T @ self.P @ A_d
+        self.K = np.linalg.inv(R + B_d.T @ self.P @ B_d) @ B_d.T @ self.P @ A_d
 
     def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
         """
@@ -30,6 +32,6 @@ class LQRControllerDisc(ControllerBase):
         """
         if self.last_update_time is None or (current_time - self.last_update_time) >= self.sampling_time:
             self.last_update_time = current_time
-            self.u_prev = self.K @ (x - self.x_inf)
+            self.u_prev = - self.K @ (x - self.x_inf)
 
         return self.u_prev

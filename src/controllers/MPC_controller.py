@@ -5,6 +5,9 @@ import cvxpy as cp
 from classes import Model
 
 class MPCController(ControllerBase):
+    """
+    Linear nominal MPC controller in discrete time
+    """
     def __init__(self, model:Model, T_top_ref:float, T_cell_ref:float,
                  A_d:np.ndarray, B_d:np.ndarray, h_d:np.ndarray, Q:np.ndarray, S:np.ndarray, R:np.ndarray,
                  pred_time:int, sampling_time:int, discret_time:int,
@@ -41,7 +44,7 @@ class MPCController(ControllerBase):
 
         self._init_optimization_problem()
 
-        self.update_open_loop_input(current_time=0)
+        self._update_open_loop_input(current_time=0)
         self.last_update_time = None
 
     def _init_constraints(self) -> None:
@@ -52,6 +55,9 @@ class MPCController(ControllerBase):
         self.I_max = min(I_HP_max_U_BT, self.model.I_HP_max)
 
     def _init_optimization_problem(self) -> None:
+        """
+        Parametrization of the optimization problem in the initial state. DPP compliant for fast computations
+        """
         # Define variables and dynamic parameters for the optimization problem
         self.x_var    = cp.Variable((self.n, self.N+1))
         self.i_var    = cp.Variable((self.m, self.N))
@@ -98,7 +104,10 @@ class MPCController(ControllerBase):
     #     self.B_d_param.value = B_d
     #     self.h_d_param.value = h_d
 
-    def update_open_loop_input(self, current_time:float, optimal_input_values:np.ndarray=None) -> None:
+    def _update_open_loop_input(self, current_time:float, optimal_input_values:np.ndarray=None) -> None:
+        """
+        Updates open-loop control inputs
+        """
         # Extend time to one before current_time
         time_index = np.hstack((current_time - self.discret_time,
                                 np.arange(current_time,
@@ -115,10 +124,16 @@ class MPCController(ControllerBase):
                                    optimal_input_values)).T
             self.open_loop_u = pd.DataFrame(opt_input, columns=['I_HP', 'x_FAN'], index=time_index)
 
-    def get_open_loop_u(self, current_time:float) -> np.ndarray:
+    def _get_open_loop_u(self, current_time:float) -> np.ndarray:
+        """
+        Returns the open-loop control inputs saved at previous iterations
+        """
         return self.open_loop_u.loc[self.open_loop_u.index <= current_time].iloc[-1]
 
     def get_control_input(self, current_time:float, x:np.ndarray, y:np.ndarray) -> np.ndarray:
+        """
+        Solves the optimization problem at the current state with MOSEK solver (backup CLARABEL)
+        """
         if self.print_output:
             print(f"--  Simulation time: {current_time} sec  -  Infeasible solutions: {self.num_infeas} of which None output: {self.num_None_output}  --")
 
@@ -153,7 +168,7 @@ class MPCController(ControllerBase):
                 except:
                     self.num_infeas += 1
                     
-                    control_input = self.get_open_loop_u(current_time)
+                    control_input = self._get_open_loop_u(current_time)
 
                     if self.print_output:
                         print(f"Forced control output: {control_input}")
@@ -163,7 +178,7 @@ class MPCController(ControllerBase):
             control_input = self.i_var[:, 0].value
 
             # Save open-loop input
-            self.update_open_loop_input(current_time, self.i_var.value)
+            self._update_open_loop_input(current_time, self.i_var.value)
 
             if self.print_output:
                 print(f"Optimized control output: {control_input}")
@@ -175,7 +190,7 @@ class MPCController(ControllerBase):
         
         # Open-loop control
         else:
-            control_input = self.get_open_loop_u(current_time)
+            control_input = self._get_open_loop_u(current_time)
             
             if self.print_output:
                 print(f"Open-loop control output: {control_input}")
