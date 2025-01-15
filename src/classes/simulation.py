@@ -6,13 +6,12 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from scipy.constants import convert_temperature as conv_temp
 
-from .system_base import SystemBase
 from classes import Model
 from controllers import ControllerBase
 from img import save_plot2pdf
 
 
-class Simulation(SystemBase):
+class Simulation():
     """
     Simulation for the DIYA: run, plot data
     """
