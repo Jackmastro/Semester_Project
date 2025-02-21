@@ -56,7 +56,7 @@ The project requires Python 3.11 or higher. To set up the project, run the follo
 ### macOS/Linux
 ```bash
 git clone git@github.comJackmastro/Semester_Project.git
-cd Semester_Thesis_1
+cd Semester_Project
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -66,7 +66,7 @@ pip install -e .
 ### Windows
 ```bash
 git clone git@github.com:Jackmastro/Semester_Project.git
-cd Semester_Thesis_1
+cd Semester_Project
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
