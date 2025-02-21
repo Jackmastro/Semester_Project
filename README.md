@@ -65,7 +65,7 @@ pip install -e .
 
 ### Windows
 ```bash
-git clone git@github.com:Jackmastro/Semester_Thesis_1.git
+[git clone git@github.com:Jackmastro/Semester_Thesis_1.git](https://github.com/Jackmastro/Semester_Project.git)
 cd Semester_Thesis_1
 python -m venv venv
 .\venv\Scripts\activate
